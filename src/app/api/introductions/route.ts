@@ -133,7 +133,7 @@ export async function POST(request: NextRequest) {
     // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, isHiringManager: true }
+      select: { id: true, isAdmin: true }
     })
 
     if (!currentUser) {
@@ -143,11 +143,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // TODO: Add proper admin check once admin role is implemented
-    // For now, we'll allow hiring managers to create introductions for testing
-    if (!currentUser.isHiringManager) {
+    // Only Clout admins can create introductions
+    if (!currentUser.isAdmin) {
       return NextResponse.json(
-        { error: 'Only admins can create introductions' },
+        { error: 'Only Clout admins can create introductions' },
         { status: 403 }
       )
     }
@@ -166,6 +165,38 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(
         { error: 'Cannot introduce someone to themselves' },
         { status: 400 }
+      )
+    }
+
+    // Verify that the current user has confirmed relationships with both people
+    const userRelationships = await prisma.relationship.findMany({
+      where: {
+        OR: [
+          { user1Id: currentUser.id, status: 'CONFIRMED' },
+          { user2Id: currentUser.id, status: 'CONFIRMED' }
+        ]
+      },
+      select: {
+        user1Id: true,
+        user2Id: true
+      }
+    })
+
+    const connectedUserIds = userRelationships.map(rel =>
+      rel.user1Id === currentUser.id ? rel.user2Id : rel.user1Id
+    )
+
+    if (!connectedUserIds.includes(personAId)) {
+      return NextResponse.json(
+        { error: 'You can only introduce users you have confirmed relationships with' },
+        { status: 403 }
+      )
+    }
+
+    if (!connectedUserIds.includes(personBId)) {
+      return NextResponse.json(
+        { error: 'You can only introduce users you have confirmed relationships with' },
+        { status: 403 }
       )
     }
 

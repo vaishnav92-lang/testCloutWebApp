@@ -673,6 +673,7 @@ export default function Dashboard() {
                     lastName: session.user.lastName || '',
                     email: session.user.email
                   }}
+                  isAdmin={session.user.isAdmin}
                 />
               )}
             </div>

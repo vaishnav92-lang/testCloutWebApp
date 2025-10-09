@@ -57,9 +57,11 @@ export async function POST(
     }
 
     // VALIDATE ENDORSEMENT STATUS
-    if (endorsement.status !== 'PENDING_CANDIDATE_ACTION') {
+    // Allow changes to any endorsement except those in error states
+    const allowedStatuses = ['PENDING_CANDIDATE_ACTION', 'PRIVATE', 'ACTIVE_MATCHING', 'NOT_USING']
+    if (!allowedStatuses.includes(endorsement.status)) {
       return NextResponse.json({
-        error: 'This endorsement has already been processed'
+        error: 'This endorsement cannot be modified'
       }, { status: 400 })
     }
 
@@ -82,8 +84,11 @@ export async function POST(
     })
 
     // SUCCESS RESPONSE
+    const isFirstTime = endorsement.status === 'PENDING_CANDIDATE_ACTION'
     return NextResponse.json({
-      message: 'Endorsement preference updated successfully',
+      message: isFirstTime
+        ? 'Endorsement preference set successfully'
+        : 'Endorsement privacy settings updated successfully',
       status: updatedEndorsement.status
     })
 

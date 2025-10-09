@@ -11,6 +11,7 @@ declare module "next-auth" {
       referralCode: string
       inviteUsed: boolean
       isHiringManager: boolean
+      isAdmin: boolean
     } & DefaultSession["user"]
   }
 
@@ -22,5 +23,6 @@ declare module "next-auth" {
     referralCode: string
     inviteUsed: boolean
     isHiringManager: boolean
+    isAdmin: boolean
   }
 }

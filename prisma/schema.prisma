@@ -41,8 +41,6 @@ model User {
   inviteUsed    Boolean   @default(false)
   invitedAt     DateTime?
 
-  // Job management (legacy field - now using user_type)
-  canCreateJobs Boolean   @default(false)
   ownedJobs     Job[]
 
   // User intent/mode (keep for now, will migrate data)
@@ -75,6 +73,8 @@ model User {
 
   // Hiring manager capabilities
   isHiringManager       Boolean @default(false)
+  // Clout admin capabilities (can create introductions, etc.)
+  isAdmin               Boolean @default(false)
 
   // Authentication
   accounts      Account[]

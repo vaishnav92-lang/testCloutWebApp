@@ -109,6 +109,7 @@ export const authOptions = {
             referralCode: true,
             inviteUsed: true,
             isHiringManager: true,
+            isAdmin: true,
           }
         })
 
@@ -121,6 +122,7 @@ export const authOptions = {
           session.user.referralCode = dbUser.referralCode
           session.user.inviteUsed = dbUser.inviteUsed
           session.user.isHiringManager = dbUser.isHiringManager
+          session.user.isAdmin = dbUser.isAdmin
         }
       }
 
@@ -133,7 +135,7 @@ export const authOptions = {
   session: {
     strategy: "database",
   },
-})
+};
 
 const handler = NextAuth(authOptions)
 export { handler as GET, handler as POST }

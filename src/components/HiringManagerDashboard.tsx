@@ -37,9 +37,10 @@ interface HiringManagerDashboardProps {
     lastName?: string
     email: string
   }
+  isAdmin?: boolean
 }
 
-export default function HiringManagerDashboard({ userInfo }: HiringManagerDashboardProps) {
+export default function HiringManagerDashboard({ userInfo, isAdmin }: HiringManagerDashboardProps) {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
   const router = useRouter()
@@ -241,8 +242,8 @@ export default function HiringManagerDashboard({ userInfo }: HiringManagerDashbo
         </div>
       </div>
 
-      {/* Admin Introduction Tool */}
-      <AdminIntroductionTool />
+      {/* Admin Introduction Tool - Only show for Clout admins */}
+      {isAdmin && <AdminIntroductionTool />}
     </div>
   )
 }

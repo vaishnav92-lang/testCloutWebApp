@@ -146,6 +146,12 @@ export default function EndorsementNotifications({ className = '' }: Endorsement
                 </span>
               </div>
             </div>
+            <button
+              onClick={() => router.push(`/endorsements/${endorsement.id}/decide`)}
+              className="px-3 py-1 bg-gray-600 text-white text-sm rounded hover:bg-gray-700 transition-colors"
+            >
+              Change Privacy
+            </button>
           </div>
         ))}
       </div>

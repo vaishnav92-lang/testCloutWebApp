@@ -57,6 +57,10 @@ export default function EndorsementDecision() {
 
         if (response.ok) {
           setEndorsement(data)
+          // Set initial choice to current status if already decided
+          if (data.status && data.status !== 'PENDING_CANDIDATE_ACTION') {
+            setSelectedChoice(data.status as EndorsementStatus)
+          }
         } else {
           setError(data.error || 'Endorsement not found')
         }
@@ -155,11 +159,20 @@ export default function EndorsementDecision() {
         <div className="bg-white shadow-lg rounded-lg p-6">
           <div className="text-center mb-6">
             <h1 className="text-2xl font-bold text-gray-900">
-              Endorsement Decision
+              {endorsement?.status && endorsement.status !== 'PENDING_CANDIDATE_ACTION'
+                ? 'Change Privacy Settings'
+                : 'Endorsement Decision'}
             </h1>
             <p className="mt-2 text-gray-600">
               {endorsement?.endorser.name} has written an endorsement about you
             </p>
+            {endorsement?.status && endorsement.status !== 'PENDING_CANDIDATE_ACTION' && (
+              <p className="mt-1 text-sm text-gray-500">
+                Currently: {endorsement.status === 'PRIVATE' ? 'Private Mode' :
+                           endorsement.status === 'ACTIVE_MATCHING' ? 'Active Matching' :
+                           'Not Using'}
+              </p>
+            )}
           </div>
 
           <div className="space-y-6">

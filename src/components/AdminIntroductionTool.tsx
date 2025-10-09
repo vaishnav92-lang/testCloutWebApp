@@ -1,8 +1,8 @@
 /**
- * ADMIN INTRODUCTION TOOL COMPONENT
+ * INTRODUCTION TOOL COMPONENT
  *
- * Allows admins/hiring managers to create introductions between users.
- * For testing purposes, hiring managers can use this feature.
+ * Allows hiring managers to create introductions between users in their network.
+ * Privacy-protected: Only shows users that the current user has confirmed relationships with.
  */
 
 'use client'
@@ -127,6 +127,18 @@ export default function AdminIntroductionTool() {
         <p className="text-sm text-gray-600 mt-1">
           Introduce two members to help them build valuable connections
         </p>
+        <div className="mt-3 p-3 bg-blue-50 border border-blue-200 rounded-md">
+          <p className="text-xs text-blue-700">
+            🔒 Privacy Protected: Only users you have confirmed relationships with are shown
+          </p>
+        </div>
+        {users.length === 0 && (
+          <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-md">
+            <p className="text-xs text-yellow-700">
+              ℹ️ No connections available. Build relationships with other users first to make introductions.
+            </p>
+          </div>
+        )}
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
