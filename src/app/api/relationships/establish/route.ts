@@ -17,7 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { Resend } from 'resend'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 
 // Initialize Resend for email delivery
 const resend = new Resend(process.env.RESEND_API_KEY)

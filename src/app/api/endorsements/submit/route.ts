@@ -22,7 +22,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { resend } from '@/lib/resend'
-import { authOptions } from '@/app/api/auth/[...nextauth]/route'
+import { authOptions } from '@/lib/auth'
 
 // POST - Submit endorsement from frontend form
 export async function POST(request: NextRequest) {
