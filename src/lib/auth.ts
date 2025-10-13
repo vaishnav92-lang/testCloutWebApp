@@ -12,11 +12,8 @@
 import EmailProvider from "next-auth/providers/email"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
-import { Resend } from "resend"
+import { getResend } from "./resend"
 import type { NextAuthOptions } from "next-auth"
-
-// Initialize Resend email service for magic link delivery
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export const authOptions: NextAuthOptions = {
   // Use Prisma adapter to store sessions/accounts in database
@@ -31,6 +28,7 @@ export const authOptions: NextAuthOptions = {
       // This gives us more control over email templates and delivery
       sendVerificationRequest: async ({ identifier: email, url }) => {
         try {
+          const resend = getResend()
           await resend.emails.send({
             from: process.env.EMAIL_FROM!,
             to: email,

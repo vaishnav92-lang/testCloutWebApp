@@ -16,11 +16,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
-import { Resend } from 'resend'
+import { getResend } from '@/lib/resend'
 import { authOptions } from '@/lib/auth'
-
-// Initialize Resend for email delivery
-const resend = new Resend(process.env.RESEND_API_KEY)
 
 export async function POST(request: NextRequest) {
   try {
@@ -113,6 +110,7 @@ export async function POST(request: NextRequest) {
       // VALIDATION EMAIL (for existing users)
       // Send email asking them to accept/decline the relationship
       // NOTE: Trust score is NOT disclosed for privacy
+      const resend = getResend()
       await resend.emails.send({
         from: process.env.EMAIL_FROM!,
         to: email,
@@ -197,6 +195,7 @@ export async function POST(request: NextRequest) {
       })
 
       // Send invitation email (outside transaction to avoid long-running operations)
+      const resend = getResend()
       await resend.emails.send({
         from: process.env.EMAIL_FROM!,
         to: email,
