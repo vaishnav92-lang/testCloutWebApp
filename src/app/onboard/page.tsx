@@ -1,10 +1,12 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useSession } from 'next-auth/react'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 
-export default function Onboard() {
+function OnboardContent() {
   const { data: session, status, update } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -271,5 +273,17 @@ export default function Onboard() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function Onboard() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <OnboardContent />
+    </Suspense>
   )
 }

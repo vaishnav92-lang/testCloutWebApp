@@ -26,10 +26,10 @@ type EndorsementChoice = 'PRIVATE' | 'ACTIVE_MATCHING' | 'NOT_USING'
 // POST - Process candidate decision on endorsement
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const endorsementId = params.id
+    const { id: endorsementId } = await params
     const { choice } = await request.json()
 
     // VALIDATE INPUT

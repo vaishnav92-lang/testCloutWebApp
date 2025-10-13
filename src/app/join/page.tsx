@@ -1,10 +1,12 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 
-export default function Join() {
+function JoinContent() {
   const searchParams = useSearchParams()
   const invitationId = searchParams.get('invitation')
   const [invitation, setInvitation] = useState<any>(null)
@@ -143,5 +145,17 @@ export default function Join() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function Join() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <JoinContent />
+    </Suspense>
   )
 }

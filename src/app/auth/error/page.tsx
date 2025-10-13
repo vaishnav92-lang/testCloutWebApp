@@ -1,7 +1,10 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useSearchParams } from 'next/navigation'
 import Link from 'next/link'
+import { Suspense } from 'react'
 
 const errorMessages = {
   default: 'An unexpected error occurred.',
@@ -10,7 +13,7 @@ const errorMessages = {
   verification: 'The verification link may have expired or already been used.',
 }
 
-export default function AuthError() {
+function AuthErrorContent() {
   const searchParams = useSearchParams()
   const error = searchParams.get('error') as keyof typeof errorMessages
 
@@ -45,5 +48,17 @@ export default function AuthError() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function AuthError() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <AuthErrorContent />
+    </Suspense>
   )
 }

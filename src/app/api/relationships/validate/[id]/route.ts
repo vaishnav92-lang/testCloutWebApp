@@ -24,7 +24,7 @@ import { authOptions } from '@/lib/auth'
 // GET - Fetch relationship details for validation
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // AUTHENTICATION CHECK
@@ -37,7 +37,7 @@ export async function GET(
       }, { status: 401 })
     }
 
-    const relationshipId = params.id
+    const { id: relationshipId } = await params
 
     // FETCH RELATIONSHIP DATA
     // Get relationship with both user details for validation display
@@ -112,7 +112,7 @@ export async function GET(
 // POST - Accept or decline relationship
 export async function POST(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // AUTHENTICATION CHECK
@@ -128,7 +128,7 @@ export async function POST(
     // INPUT VALIDATION
     // Extract and validate action and trust score from request
     const { action, trustScore } = await request.json()
-    const relationshipId = params.id
+    const { id: relationshipId } = await params
 
     // Validate action is either 'accept' or 'decline'
     if (!action || !['accept', 'decline'].includes(action)) {

@@ -16,10 +16,10 @@ import { prisma } from '@/lib/prisma'
 // GET - Get endorsement details for decision page
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const endorsementId = params.id
+    const { id: endorsementId } = await params
 
     const endorsement = await prisma.endorsement.findUnique({
       where: { id: endorsementId },

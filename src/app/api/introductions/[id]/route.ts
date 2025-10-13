@@ -16,7 +16,7 @@ import { prisma } from '@/lib/prisma'
  */
 export async function PATCH(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -41,9 +41,11 @@ export async function PATCH(
       )
     }
 
+    const { id } = await params
+
     // Fetch the introduction
     const introduction = await prisma.introduction.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!introduction) {
@@ -90,7 +92,7 @@ export async function PATCH(
 
     // Update the introduction
     const updatedIntroduction = await prisma.introduction.update({
-      where: { id: params.id },
+      where: { id: id },
       data: updateData,
       include: {
         personA: {
@@ -156,7 +158,7 @@ export async function PATCH(
  */
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const session = await getServerSession(authOptions)
@@ -181,9 +183,11 @@ export async function DELETE(
       )
     }
 
+    const { id } = await params
+
     // Fetch the introduction
     const introduction = await prisma.introduction.findUnique({
-      where: { id: params.id }
+      where: { id }
     })
 
     if (!introduction) {
@@ -203,7 +207,7 @@ export async function DELETE(
 
     // Mark as inactive
     await prisma.introduction.update({
-      where: { id: params.id },
+      where: { id: id },
       data: { status: 'INACTIVE' }
     })
 

@@ -12,7 +12,7 @@ import { authOptions } from '@/lib/auth'
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // AUTHENTICATION CHECK
@@ -43,9 +43,11 @@ export async function PUT(
       }, { status: 403 })
     }
 
+    const { id } = await params
+
     // VERIFY JOB OWNERSHIP
     const existingJob = await prisma.job.findUnique({
-      where: { id: params.id },
+      where: { id },
       select: { ownerId: true, status: true }
     })
 
@@ -126,7 +128,7 @@ export async function PUT(
 
     // UPDATE JOB
     const updatedJob = await prisma.job.update({
-      where: { id: params.id },
+      where: { id },
       data: updateData,
       include: {
         company: {
@@ -155,7 +157,7 @@ export async function PUT(
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     // AUTHENTICATION CHECK
@@ -186,10 +188,12 @@ export async function GET(
       }, { status: 403 })
     }
 
+    const { id } = await params
+
     // FETCH JOB
     const job = await prisma.job.findUnique({
       where: {
-        id: params.id,
+        id,
         ownerId: currentUser.id // Ensure user owns this job
       },
       include: {

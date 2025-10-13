@@ -8,11 +8,13 @@
 
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, Suspense } from 'react'
 
-export default function EndorsedOnboarding() {
+function EndorsedOnboardingContent() {
   const { data: session, status } = useSession()
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -209,5 +211,17 @@ export default function EndorsedOnboarding() {
         </div>
       </div>
     </div>
+  )
+}
+
+export default function EndorsedOnboarding() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <EndorsedOnboardingContent />
+    </Suspense>
   )
 }

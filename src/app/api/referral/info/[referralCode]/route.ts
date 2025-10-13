@@ -3,10 +3,10 @@ import { prisma } from '@/lib/prisma'
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { referralCode: string } }
+  { params }: { params: Promise<{ referralCode: string }> }
 ) {
   try {
-    const { referralCode } = params
+    const { referralCode } = await params
 
     const referrer = await prisma.user.findUnique({
       where: { referralCode },

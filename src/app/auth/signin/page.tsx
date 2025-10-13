@@ -1,10 +1,12 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import { signIn, getSession } from "next-auth/react"
-import { useState, useEffect } from "react"
+import { useState, useEffect, Suspense } from "react"
 import { useRouter, useSearchParams } from "next/navigation"
 
-export default function SignIn() {
+function SignInContent() {
   const [email, setEmail] = useState('')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -115,5 +117,17 @@ export default function SignIn() {
         </form>
       </div>
     </div>
+  )
+}
+
+export default function SignIn() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-lg">Loading...</div>
+      </div>
+    }>
+      <SignInContent />
+    </Suspense>
   )
 }
