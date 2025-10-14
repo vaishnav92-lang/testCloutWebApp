@@ -38,6 +38,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     console.log('Admin access granted for:', session.user.email)
+    console.log('Starting user deletion process...')
 
     // Get email from request body
     const { email } = await request.json()
