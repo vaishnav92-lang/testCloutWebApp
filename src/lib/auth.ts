@@ -73,18 +73,32 @@ export const authOptions: NextAuthOptions = {
     // We check if they exist in our database first - if not, reject them
     async signIn({ user, account, profile, email, credentials }) {
       if (user.email) {
-        // Check if user exists in our database
-        const existingUser = await prisma.user.findUnique({
-          where: { email: user.email }
-        })
+        try {
+          // Check if user exists in our database (case-insensitive)
+          const existingUser = await prisma.user.findFirst({
+            where: {
+              email: {
+                equals: user.email,
+                mode: 'insensitive'
+              }
+            }
+          })
 
-        // Reject sign-in if user doesn't exist (invite-only system)
-        if (!existingUser) {
-          console.log("Rejected sign-in for non-invited user:", user.email)
+          // Reject sign-in if user doesn't exist (invite-only system)
+          if (!existingUser) {
+            console.log("Rejected sign-in for non-invited user:", user.email)
+            console.log("Available users:", await prisma.user.findMany({
+              select: { email: true },
+              take: 5
+            }))
+            return false
+          }
+
+          console.log("Approved sign-in for invited user:", user.email)
+        } catch (error) {
+          console.error("Error checking user during sign-in:", error)
           return false
         }
-
-        console.log("Approved sign-in for invited user:", user.email)
       }
 
       return true
@@ -125,6 +139,23 @@ export const authOptions: NextAuthOptions = {
       }
 
       return session
+    },
+
+    // REDIRECT AFTER SIGN-IN
+    // This callback determines where to redirect users after successful sign-in
+    async redirect({ url, baseUrl }) {
+      // If user is signing in from an invitation link, maintain the callback URL
+      if (url.startsWith('/')) return `${baseUrl}${url}`
+
+      // For invitation flows, redirect to onboarding
+      if (url.includes('callbackUrl') && url.includes('onboard')) {
+        const urlObj = new URL(url)
+        const callbackUrl = urlObj.searchParams.get('callbackUrl')
+        if (callbackUrl) return callbackUrl
+      }
+
+      // Default redirect to dashboard for existing users
+      return `${baseUrl}/dashboard`
     },
   },
 
