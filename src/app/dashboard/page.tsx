@@ -235,12 +235,23 @@ export default function Dashboard() {
                 <h1 className="text-2xl font-bold text-gray-900">
                   Welcome{session.user.firstName ? `, ${session.user.firstName}` : ''}!
                 </h1>
-                <button
-                  onClick={() => signOut({ callbackUrl: '/' })}
-                  className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                >
-                  Sign Out
-                </button>
+                <div className="flex items-center space-x-3">
+                  {/* Admin Dashboard Button - Only show for admin users */}
+                  {session.user.email === 'vaishnav@cloutcareers.com' && (
+                    <button
+                      onClick={() => router.push('/admin')}
+                      className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700"
+                    >
+                      Admin Dashboard
+                    </button>
+                  )}
+                  <button
+                    onClick={() => signOut({ callbackUrl: '/' })}
+                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
+                  >
+                    Sign Out
+                  </button>
+                </div>
               </div>
 
               {/* Dashboard Toggle - Only show if user is a hiring manager */}
