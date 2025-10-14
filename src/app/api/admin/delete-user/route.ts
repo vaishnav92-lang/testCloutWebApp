@@ -123,14 +123,29 @@ export async function DELETE(request: NextRequest) {
         }
       })
 
-      // 9. Delete users who were referred by this user
+      // 9. Delete Earnings Transactions
+      await tx.earningsTransaction.deleteMany({
+        where: { userId: user.id }
+      })
+
+      // 10. Delete Clout Activities
+      await tx.cloutActivity.deleteMany({
+        where: { userId: user.id }
+      })
+
+      // 11. Delete Endorsement Releases where user is employer
+      await tx.endorsementRelease.deleteMany({
+        where: { employerId: user.id }
+      })
+
+      // 12. Delete users who were referred by this user
       // Note: You might want to just set referredById to null instead
       await tx.user.updateMany({
         where: { referredById: user.id },
         data: { referredById: null }
       })
 
-      // 10. Finally, delete the user
+      // 13. Finally, delete the user
       await tx.user.delete({
         where: { id: user.id }
       })
