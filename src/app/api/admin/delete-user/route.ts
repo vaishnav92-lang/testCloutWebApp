@@ -15,7 +15,10 @@ export async function DELETE(request: NextRequest) {
     // Check if user is authenticated
     const session = await getServerSession(authOptions)
 
+    console.log('Delete user API called - Session:', session?.user?.email)
+
     if (!session?.user?.email) {
+      console.log('No session found')
       return NextResponse.json({
         error: 'Not authenticated'
       }, { status: 401 })
@@ -25,11 +28,16 @@ export async function DELETE(request: NextRequest) {
     // For now, you can hardcode admin emails
     const ADMIN_EMAILS = ['vaishnav@cloutcareers.com'] // Add your admin email here
 
+    console.log('Checking admin access for:', session.user.email, 'Admin emails:', ADMIN_EMAILS)
+
     if (!ADMIN_EMAILS.includes(session.user.email)) {
+      console.log('Admin access denied for:', session.user.email)
       return NextResponse.json({
         error: 'Not authorized - admin access required'
       }, { status: 403 })
     }
+
+    console.log('Admin access granted for:', session.user.email)
 
     // Get email from request body
     const { email } = await request.json()

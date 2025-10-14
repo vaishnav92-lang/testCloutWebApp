@@ -37,6 +37,7 @@ export default function DeleteUserPage() {
       const response = await fetch('/api/admin/delete-user', {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
+        credentials: 'include', // Include cookies for authentication
         body: JSON.stringify({ email })
       })
 
