@@ -33,19 +33,29 @@ export async function POST(request: NextRequest) {
 
     // INPUT VALIDATION
     // Extract and validate required fields from request
-    const { email, trustScore } = await request.json()
+    const { email, trustAllocation } = await request.json()
 
-    if (!email || !trustScore || trustScore < 1 || trustScore > 10) {
+    if (!email || trustAllocation === undefined || trustAllocation < 0 || trustAllocation > 100) {
       return NextResponse.json({
-        error: 'Email and trust score (1-10) are required'
+        error: 'Email and trust allocation (0-100 points) are required'
       }, { status: 400 })
     }
 
     // FETCH CURRENT USER DATA
-    // Get sender's info including name for personalized emails
+    // Get sender's info including trust allocation and name for personalized emails
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: { id: true, availableInvites: true, tier: true, firstName: true, lastName: true }
+      select: {
+        id: true,
+        availableTrust: true,
+        totalTrustPoints: true,
+        allocatedTrust: true,
+        // Legacy fields for compatibility
+        availableInvites: true,
+        tier: true,
+        firstName: true,
+        lastName: true
+      }
     })
 
     if (!currentUser) {
@@ -65,11 +75,11 @@ export async function POST(request: NextRequest) {
       where: { email: email }
     })
 
-    // INVITE LIMIT CHECK (for new users only)
-    // Only consume invites when creating new users
-    if (!targetUser && currentUser.availableInvites <= 0) {
+    // TRUST ALLOCATION CHECK
+    // Ensure user has enough available trust points
+    if (currentUser.availableTrust < trustAllocation) {
       return NextResponse.json({
-        error: 'No available invites remaining'
+        error: `Insufficient trust points. Available: ${currentUser.availableTrust}, Requested: ${trustAllocation}`
       }, { status: 400 })
     }
 
@@ -94,17 +104,32 @@ export async function POST(request: NextRequest) {
 
     // FLOW 1: EXISTING USER PATH
     if (targetUser) {
-      // User already exists in system - create pending relationship
-      // user1TrustScore: Sender's trust score (set now)
-      // user2TrustScore: Recipient's trust score (set when they respond)
-      const relationship = await prisma.relationship.create({
-        data: {
-          user1Id: currentUser.id,
-          user2Id: targetUser.id,
-          user1TrustScore: trustScore,
-          user2TrustScore: 0, // Will be set when they confirm
-          status: 'PENDING'
-        }
+      // User already exists in system - create pending relationship and allocate trust
+      const relationship = await prisma.$transaction(async (tx) => {
+        // Create relationship with trust allocation
+        const rel = await tx.relationship.create({
+          data: {
+            user1Id: currentUser.id,
+            user2Id: targetUser.id,
+            user1TrustAllocated: trustAllocation,
+            user2TrustAllocated: 0, // Will be set when they respond
+            // Legacy fields for compatibility
+            user1TrustScore: Math.round(trustAllocation / 10), // Convert 0-100 to 1-10 scale
+            user2TrustScore: 0,
+            status: 'PENDING'
+          }
+        })
+
+        // Update user's trust allocation
+        await tx.user.update({
+          where: { id: currentUser.id },
+          data: {
+            allocatedTrust: { increment: trustAllocation },
+            availableTrust: { decrement: trustAllocation }
+          }
+        })
+
+        return rel
       })
 
       // VALIDATION EMAIL (for existing users)
@@ -157,11 +182,11 @@ export async function POST(request: NextRequest) {
 
       // User doesn't exist - wrap everything in a transaction for atomicity
       const result = await prisma.$transaction(async (tx) => {
-        // Create invitation
+        // Create invitation with trust allocation
         const invitation = await tx.invitation.create({
           data: {
             email: email,
-            trustScore: trustScore,
+            trustScore: Math.round(trustAllocation / 10), // Convert to legacy scale for compatibility
             senderId: currentUser.id,
             status: 'PENDING'
           }
@@ -176,10 +201,27 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Decrement available invites
+        // Create pending relationship with trust allocation
+        await tx.relationship.create({
+          data: {
+            user1Id: currentUser.id,
+            user2Id: newUser.id,
+            user1TrustAllocated: trustAllocation,
+            user2TrustAllocated: 0, // Will be set when they join
+            // Legacy fields for compatibility
+            user1TrustScore: Math.round(trustAllocation / 10),
+            user2TrustScore: 0,
+            status: 'PENDING'
+          }
+        })
+
+        // Update sender's trust allocation
         await tx.user.update({
           where: { id: currentUser.id },
           data: {
+            allocatedTrust: { increment: trustAllocation },
+            availableTrust: { decrement: trustAllocation },
+            // Legacy fields for compatibility
             availableInvites: { decrement: 1 },
             totalInvitesUsed: { increment: 1 }
           }

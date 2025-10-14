@@ -2,16 +2,17 @@
  * USER STATISTICS MODULE
  *
  * This module provides user statistics for dashboard display.
- * It fetches invite counts, tier information, and usage metrics.
+ * It fetches trust allocation data and usage metrics.
  *
  * Used by dashboard to show:
- * - Available invites remaining
- * - Total invites used
- * - Current user tier (CONNECTOR, TALENT_SCOUT, NETWORK_HUB)
+ * - Available trust points
+ * - Allocated trust points
+ * - Total trust points (always 100)
+ * - Current user tier (legacy field)
  *
  * Key features:
- * - Real-time invite count tracking
- * - Tier-based invite limits (future enhancement)
+ * - Real-time trust allocation tracking
+ * - Trust-based relationship system
  * - Secure user-specific data access
  */
 
@@ -20,7 +21,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 
-// GET - Fetch user stats (invites, tier, etc.)
+// GET - Fetch user stats (trust allocation, tier, etc.)
 export async function GET(request: NextRequest) {
   try {
     // AUTHENTICATION CHECK
@@ -34,14 +35,15 @@ export async function GET(request: NextRequest) {
     }
 
     // FETCH USER STATISTICS
-    // Get invite counts and tier information from database
+    // Get trust allocation data and tier information from database
     // Only select necessary fields for privacy and performance
     const user = await prisma.user.findUnique({
       where: { email: session.user.email },
       select: {
-        availableInvites: true,    // Invites remaining to send
-        totalInvitesUsed: true,    // Total invites consumed
-        tier: true                 // User tier (affects invite limits)
+        totalTrustPoints: true,    // Total trust points (always 100)
+        allocatedTrust: true,      // Trust currently allocated
+        availableTrust: true,      // Trust available to allocate
+        tier: true                 // User tier (legacy field)
       }
     })
 
@@ -52,10 +54,11 @@ export async function GET(request: NextRequest) {
     }
 
     // RESPONSE FORMATTING
-    // Return stats with fallback values for robustness
+    // Return trust allocation stats with fallback values for robustness
     return NextResponse.json({
-      availableInvites: user.availableInvites || 0,
-      totalInvitesUsed: user.totalInvitesUsed || 0,
+      totalTrustPoints: user.totalTrustPoints || 100,
+      allocatedTrust: user.allocatedTrust || 0,
+      availableTrust: user.availableTrust || 100,
       tier: user.tier || 'CONNECTOR'
     })
 

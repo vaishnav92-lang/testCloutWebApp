@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     const connections = relationships.map(rel => {
       const isUser1 = rel.user1Id === currentUser.id
       const connectedUser = isUser1 ? rel.user2 : rel.user1
-      const myTrustScore = isUser1 ? rel.user1TrustScore : rel.user2TrustScore
+      const myTrustAllocated = isUser1 ? rel.user1TrustAllocated : rel.user2TrustAllocated
 
       return {
         id: rel.id,
@@ -71,7 +71,7 @@ export async function GET(request: NextRequest) {
           name: `${connectedUser.firstName || ''} ${connectedUser.lastName || ''}`.trim() || 'Unknown',
           email: connectedUser.email
         },
-        myTrustScore, // The trust score I gave them
+        myTrustAllocated, // The trust points I allocated to them
         isSender: isUser1, // true if current user sent the request
         canValidate: !isUser1 && rel.status === 'PENDING', // can only validate if you're the recipient and it's pending
         createdAt: rel.createdAt,

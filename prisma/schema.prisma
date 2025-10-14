@@ -5,7 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
-  directUrl = env("DIRECT_DATABASE_URL")
+  // directUrl = env("DIRECT_DATABASE_URL") // Only needed for Vercel deployment
 }
 
 model User {
@@ -50,6 +50,13 @@ model User {
   // Trust System Properties
   userType         UserType @default(REFERRER)
   engagementLevel  EngagementLevel @default(ACTIVE_SEEKER)  // maps to old userIntent
+
+  // New Trust Allocation System (replaces invite limits)
+  totalTrustPoints    Int     @default(100)     // Total trust to allocate (always 100)
+  allocatedTrust      Int     @default(0)       // Trust currently allocated to relationships
+  availableTrust      Int     @default(100)     // Trust available to allocate (100 - allocated)
+
+  // Legacy fields (keep for migration compatibility)
   tier            NodeTier @default(CONNECTOR)
   availableInvites Int     @default(3)
   totalInvitesUsed Int     @default(0)
@@ -124,9 +131,13 @@ model Relationship {
   user2Id      String
   user2        User     @relation("RelationshipUser2", fields: [user2Id], references: [id])
 
-  // Trust scores from each user's perspective (mutable)
-  user1TrustScore Int   // How much user1 trusts user2 (1-10)
-  user2TrustScore Int   // How much user2 trusts user1 (1-10)
+  // Trust allocation from each user's perspective (0-100 points)
+  user1TrustAllocated Int   @default(0)  // How much trust user1 allocates to user2 (0-100)
+  user2TrustAllocated Int   @default(0)  // How much trust user2 allocates to user1 (0-100)
+
+  // Legacy trust scores (keep for migration compatibility)
+  user1TrustScore Int?   // How much user1 trusts user2 (1-10) - nullable for migration
+  user2TrustScore Int?   // How much user2 trusts user1 (1-10) - nullable for migration
 
   status       RelationshipStatus @default(PENDING)
 

@@ -54,16 +54,17 @@ export default function Dashboard() {
 
   // USER STATISTICS STATE
   const [userStats, setUserStats] = useState({
-    availableInvites: 0,                             // Invites remaining
-    totalInvitesUsed: 0,                            // Invites consumed
-    tier: 'CONNECTOR'                               // User tier
+    totalTrustPoints: 100,                          // Total trust points (always 100)
+    allocatedTrust: 0,                              // Trust currently allocated
+    availableTrust: 100,                            // Trust available to allocate
+    tier: 'CONNECTOR'                               // User tier (legacy)
   })
   const [userStatsLoading, setUserStatsLoading] = useState(true)          // Stats loading state
 
   // RELATIONSHIP FORM STATE
   const [relationshipForm, setRelationshipForm] = useState({
     email: '',                                       // Target user email
-    trustScore: 5                                   // Trust score (1-10)
+    trustAllocation: 10                              // Trust points to allocate (0-100)
   })
   const [relationshipLoading, setRelationshipLoading] = useState(false)   // Form submission state
   const [relationshipMessage, setRelationshipMessage] = useState('')      // Form success/error message
@@ -199,7 +200,7 @@ export default function Dashboard() {
 
       if (response.ok) {
         setRelationshipMessage(data.message)
-        setRelationshipForm({ email: '', trustScore: 5 })
+        setRelationshipForm({ email: '', trustAllocation: 10 })
         // Refresh relationships and stats to show the new one and updated invite count
         fetchRelationships()
         fetchUserStats()
@@ -408,20 +409,23 @@ export default function Dashboard() {
 
                       <div>
                         <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Trust Score: {relationshipForm.trustScore}/10
+                          Trust Allocation: {relationshipForm.trustAllocation} points
                         </label>
                         <input
                           type="range"
                           min="1"
-                          max="10"
-                          value={relationshipForm.trustScore}
-                          onChange={(e) => setRelationshipForm(prev => ({ ...prev, trustScore: parseInt(e.target.value) }))}
+                          max="100"
+                          value={relationshipForm.trustAllocation}
+                          onChange={(e) => setRelationshipForm(prev => ({ ...prev, trustAllocation: parseInt(e.target.value) }))}
                           className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
                         />
                         <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>1 (Low Trust)</span>
-                          <span>10 (High Trust)</span>
+                          <span>1 (Minimal)</span>
+                          <span>100 (Maximum)</span>
                         </div>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Available: {userStats.availableTrust} points
+                        </p>
                       </div>
 
                       {relationshipMessage && (
@@ -449,12 +453,12 @@ export default function Dashboard() {
                       ) : (
                         <div className="space-y-1">
                           <p className="text-xs text-gray-500">
-                            <strong>{userStats.availableInvites}</strong> invites remaining •
-                            <strong className="ml-1">{userStats.totalInvitesUsed}</strong> invites used •
-                            Tier: <strong className="ml-1">{userStats.tier}</strong>
+                            <strong>{userStats.availableTrust}</strong> trust points available •
+                            <strong className="ml-1">{userStats.allocatedTrust}</strong> points allocated •
+                            Total: <strong className="ml-1">{userStats.totalTrustPoints}</strong>
                           </p>
                           <p className="text-xs text-gray-400">
-                            New user invitations consume your available invites
+                            Distribute your trust across your network as you see fit
                           </p>
                         </div>
                       )}
@@ -500,7 +504,7 @@ export default function Dashboard() {
                         <p className="text-sm text-gray-600">{connection.connectedUser.email}</p>
                         {connection.status === 'CONFIRMED' && (
                           <p className="text-xs text-gray-500 mt-2">
-                            Trust Score: {connection.myTrustScore}/10
+                            Trust Allocated: {connection.myTrustAllocated} points
                           </p>
                         )}
                         {connection.status === 'PENDING' && (
