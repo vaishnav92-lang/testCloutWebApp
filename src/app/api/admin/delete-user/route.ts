@@ -82,7 +82,7 @@ export async function DELETE(request: NextRequest) {
           OR: [
             { personAId: user.id },
             { personBId: user.id },
-            { introducerId: user.id }
+            { introducedById: user.id }
           ]
         }
       })
@@ -92,7 +92,7 @@ export async function DELETE(request: NextRequest) {
         where: {
           OR: [
             { endorserId: user.id },
-            { candidateId: user.id }
+            { endorsedUserId: user.id }
           ]
         }
       })
