@@ -31,6 +31,13 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
+    // Block admin from using regular relationship establishment
+    if (session.user.email === 'vaishnav@cloutcareers.com') {
+      return NextResponse.json({
+        error: 'Admin must use the admin dashboard for trust allocation'
+      }, { status: 403 })
+    }
+
     // INPUT VALIDATION
     // Extract and validate required fields from request
     const { email, trustAllocation } = await request.json()
@@ -106,28 +113,22 @@ export async function POST(request: NextRequest) {
     if (targetUser) {
       // User already exists in system - create pending relationship and allocate trust
       const relationship = await prisma.$transaction(async (tx) => {
-        // Create relationship with trust allocation
+        // Create relationship WITHOUT trust allocation for pending relationships
         const rel = await tx.relationship.create({
           data: {
             user1Id: currentUser.id,
             user2Id: targetUser.id,
-            user1TrustAllocated: trustAllocation,
-            user2TrustAllocated: 0, // Will be set when they respond
+            user1TrustAllocated: 0, // No trust allocated until confirmed
+            user2TrustAllocated: 0,
             // Legacy fields for compatibility
-            user1TrustScore: Math.round(trustAllocation / 10), // Convert 0-100 to 1-10 scale
+            user1TrustScore: 0, // No trust score until confirmed
             user2TrustScore: 0,
             status: 'PENDING'
           }
         })
 
-        // Update user's trust allocation
-        await tx.user.update({
-          where: { id: currentUser.id },
-          data: {
-            allocatedTrust: { increment: trustAllocation },
-            availableTrust: { decrement: trustAllocation }
-          }
-        })
+        // DON'T update user's trust allocation for pending relationships
+        // Trust will be allocated when the relationship is confirmed
 
         return rel
       })
@@ -157,6 +158,8 @@ export async function POST(request: NextRequest) {
           </div>
         `,
       })
+
+      // Note: No trust computation needed since pending relationships don't affect trust scores
 
       return NextResponse.json({
         message: 'Validation request sent to existing user',
@@ -201,26 +204,25 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Create pending relationship with trust allocation
+        // Create pending relationship WITHOUT trust allocation
         await tx.relationship.create({
           data: {
             user1Id: currentUser.id,
             user2Id: newUser.id,
-            user1TrustAllocated: trustAllocation,
-            user2TrustAllocated: 0, // Will be set when they join
+            user1TrustAllocated: 0, // No trust allocated until they join and confirm
+            user2TrustAllocated: 0,
             // Legacy fields for compatibility
-            user1TrustScore: Math.round(trustAllocation / 10),
+            user1TrustScore: 0, // No trust score until confirmed
             user2TrustScore: 0,
             status: 'PENDING'
           }
         })
 
-        // Update sender's trust allocation
+        // Update sender's legacy invite tracking only
         await tx.user.update({
           where: { id: currentUser.id },
           data: {
-            allocatedTrust: { increment: trustAllocation },
-            availableTrust: { decrement: trustAllocation },
+            // DON'T update trust allocation for pending relationships
             // Legacy fields for compatibility
             availableInvites: { decrement: 1 },
             totalInvitesUsed: { increment: 1 }
@@ -284,6 +286,8 @@ export async function POST(request: NextRequest) {
           </div>
         `,
       })
+
+      // Note: No trust computation needed since pending relationships don't affect trust scores
 
       return NextResponse.json({
         message: 'Invitation sent successfully',

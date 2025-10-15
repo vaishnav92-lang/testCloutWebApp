@@ -169,13 +169,128 @@ function OnboardContent() {
               <label className="block text-sm font-medium text-gray-700">
                 Location
               </label>
-              <input
-                type="text"
-                placeholder="e.g., San Francisco, CA"
+              <select
                 value={formData.location}
                 onChange={(e) => setFormData(prev => ({ ...prev, location: e.target.value }))}
                 className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-              />
+              >
+                <option value="">Select your location</option>
+
+                {/* Major US Cities */}
+                <optgroup label="United States">
+                  <option value="New York, NY">New York, NY</option>
+                  <option value="Los Angeles, CA">Los Angeles, CA</option>
+                  <option value="Chicago, IL">Chicago, IL</option>
+                  <option value="Houston, TX">Houston, TX</option>
+                  <option value="Phoenix, AZ">Phoenix, AZ</option>
+                  <option value="Philadelphia, PA">Philadelphia, PA</option>
+                  <option value="San Antonio, TX">San Antonio, TX</option>
+                  <option value="San Diego, CA">San Diego, CA</option>
+                  <option value="Dallas, TX">Dallas, TX</option>
+                  <option value="San Jose, CA">San Jose, CA</option>
+                  <option value="Austin, TX">Austin, TX</option>
+                  <option value="Jacksonville, FL">Jacksonville, FL</option>
+                  <option value="Fort Worth, TX">Fort Worth, TX</option>
+                  <option value="Columbus, OH">Columbus, OH</option>
+                  <option value="San Francisco, CA">San Francisco, CA</option>
+                  <option value="Charlotte, NC">Charlotte, NC</option>
+                  <option value="Indianapolis, IN">Indianapolis, IN</option>
+                  <option value="Seattle, WA">Seattle, WA</option>
+                  <option value="Denver, CO">Denver, CO</option>
+                  <option value="Washington, DC">Washington, DC</option>
+                  <option value="Boston, MA">Boston, MA</option>
+                  <option value="El Paso, TX">El Paso, TX</option>
+                  <option value="Detroit, MI">Detroit, MI</option>
+                  <option value="Nashville, TN">Nashville, TN</option>
+                  <option value="Portland, OR">Portland, OR</option>
+                  <option value="Memphis, TN">Memphis, TN</option>
+                  <option value="Oklahoma City, OK">Oklahoma City, OK</option>
+                  <option value="Las Vegas, NV">Las Vegas, NV</option>
+                  <option value="Louisville, KY">Louisville, KY</option>
+                  <option value="Baltimore, MD">Baltimore, MD</option>
+                  <option value="Milwaukee, WI">Milwaukee, WI</option>
+                  <option value="Albuquerque, NM">Albuquerque, NM</option>
+                  <option value="Tucson, AZ">Tucson, AZ</option>
+                  <option value="Fresno, CA">Fresno, CA</option>
+                  <option value="Mesa, AZ">Mesa, AZ</option>
+                  <option value="Sacramento, CA">Sacramento, CA</option>
+                  <option value="Atlanta, GA">Atlanta, GA</option>
+                  <option value="Kansas City, MO">Kansas City, MO</option>
+                  <option value="Colorado Springs, CO">Colorado Springs, CO</option>
+                  <option value="Miami, FL">Miami, FL</option>
+                  <option value="Raleigh, NC">Raleigh, NC</option>
+                  <option value="Omaha, NE">Omaha, NE</option>
+                  <option value="Long Beach, CA">Long Beach, CA</option>
+                  <option value="Virginia Beach, VA">Virginia Beach, VA</option>
+                  <option value="Oakland, CA">Oakland, CA</option>
+                  <option value="Minneapolis, MN">Minneapolis, MN</option>
+                  <option value="Tulsa, OK">Tulsa, OK</option>
+                  <option value="Arlington, TX">Arlington, TX</option>
+                  <option value="Tampa, FL">Tampa, FL</option>
+                </optgroup>
+
+                {/* Major International Cities */}
+                <optgroup label="International">
+                  <option value="London, UK">London, UK</option>
+                  <option value="Toronto, Canada">Toronto, Canada</option>
+                  <option value="Vancouver, Canada">Vancouver, Canada</option>
+                  <option value="Montreal, Canada">Montreal, Canada</option>
+                  <option value="Berlin, Germany">Berlin, Germany</option>
+                  <option value="Munich, Germany">Munich, Germany</option>
+                  <option value="Amsterdam, Netherlands">Amsterdam, Netherlands</option>
+                  <option value="Paris, France">Paris, France</option>
+                  <option value="Madrid, Spain">Madrid, Spain</option>
+                  <option value="Barcelona, Spain">Barcelona, Spain</option>
+                  <option value="Rome, Italy">Rome, Italy</option>
+                  <option value="Milan, Italy">Milan, Italy</option>
+                  <option value="Zurich, Switzerland">Zurich, Switzerland</option>
+                  <option value="Stockholm, Sweden">Stockholm, Sweden</option>
+                  <option value="Copenhagen, Denmark">Copenhagen, Denmark</option>
+                  <option value="Oslo, Norway">Oslo, Norway</option>
+                  <option value="Helsinki, Finland">Helsinki, Finland</option>
+                  <option value="Dublin, Ireland">Dublin, Ireland</option>
+                  <option value="Edinburgh, UK">Edinburgh, UK</option>
+                  <option value="Manchester, UK">Manchester, UK</option>
+                  <option value="Birmingham, UK">Birmingham, UK</option>
+                  <option value="Tel Aviv, Israel">Tel Aviv, Israel</option>
+                  <option value="Sydney, Australia">Sydney, Australia</option>
+                  <option value="Melbourne, Australia">Melbourne, Australia</option>
+                  <option value="Brisbane, Australia">Brisbane, Australia</option>
+                  <option value="Auckland, New Zealand">Auckland, New Zealand</option>
+                  <option value="Tokyo, Japan">Tokyo, Japan</option>
+                  <option value="Osaka, Japan">Osaka, Japan</option>
+                  <option value="Seoul, South Korea">Seoul, South Korea</option>
+                  <option value="Singapore">Singapore</option>
+                  <option value="Hong Kong">Hong Kong</option>
+                  <option value="Shanghai, China">Shanghai, China</option>
+                  <option value="Beijing, China">Beijing, China</option>
+                  <option value="Shenzhen, China">Shenzhen, China</option>
+                  <option value="Bangalore, India">Bangalore, India</option>
+                  <option value="Mumbai, India">Mumbai, India</option>
+                  <option value="Delhi, India">Delhi, India</option>
+                  <option value="Hyderabad, India">Hyderabad, India</option>
+                  <option value="Chennai, India">Chennai, India</option>
+                  <option value="Pune, India">Pune, India</option>
+                  <option value="Dubai, UAE">Dubai, UAE</option>
+                  <option value="Abu Dhabi, UAE">Abu Dhabi, UAE</option>
+                  <option value="Riyadh, Saudi Arabia">Riyadh, Saudi Arabia</option>
+                  <option value="São Paulo, Brazil">São Paulo, Brazil</option>
+                  <option value="Rio de Janeiro, Brazil">Rio de Janeiro, Brazil</option>
+                  <option value="Buenos Aires, Argentina">Buenos Aires, Argentina</option>
+                  <option value="Mexico City, Mexico">Mexico City, Mexico</option>
+                  <option value="Lagos, Nigeria">Lagos, Nigeria</option>
+                  <option value="Cairo, Egypt">Cairo, Egypt</option>
+                  <option value="Cape Town, South Africa">Cape Town, South Africa</option>
+                  <option value="Johannesburg, South Africa">Johannesburg, South Africa</option>
+                </optgroup>
+
+                {/* Remote/Other Options */}
+                <optgroup label="Other">
+                  <option value="Remote">Remote</option>
+                  <option value="Nomadic">Nomadic</option>
+                  <option value="Other">Other</option>
+                </optgroup>
+              </select>
             </div>
 
             <div>

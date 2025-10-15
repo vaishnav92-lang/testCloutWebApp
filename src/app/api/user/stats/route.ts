@@ -54,11 +54,11 @@ export async function GET(request: NextRequest) {
     }
 
     // RESPONSE FORMATTING
-    // Return trust allocation stats with fallback values for robustness
+    // Return trust allocation stats (only explicit network allocations, not implicit admin allocation)
     return NextResponse.json({
       totalTrustPoints: user.totalTrustPoints || 100,
-      allocatedTrust: user.allocatedTrust || 0,
-      availableTrust: user.availableTrust || 100,
+      allocatedTrust: user.allocatedTrust || 0, // Only explicit allocations to network members
+      availableTrust: (user.totalTrustPoints || 100) - (user.allocatedTrust || 0), // Remaining points (auto-allocated to admin in backend)
       tier: user.tier || 'CONNECTOR'
     })
 

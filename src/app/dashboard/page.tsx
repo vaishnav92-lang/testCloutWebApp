@@ -33,6 +33,7 @@ import EarningsCloutCard from '@/components/EarningsCloutCard'
 import NetworkConnectionsCard from '@/components/NetworkConnectionsCard'
 import CloutJourneyCard from '@/components/CloutJourneyCard'
 import PendingNetworkRequests from '@/components/PendingNetworkRequests'
+import TrustNetworkManager from '@/components/TrustNetworkManager'
 
 export default function Dashboard() {
   // HOOKS AND ROUTING
@@ -237,6 +238,13 @@ export default function Dashboard() {
                   Welcome{session.user.firstName ? `, ${session.user.firstName}` : ''}!
                 </h1>
                 <div className="flex items-center space-x-3">
+                  {/* Edit Profile Button - Available to all users */}
+                  <button
+                    onClick={() => router.push('/onboard')}
+                    className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100"
+                  >
+                    {session.user.isProfileComplete ? 'Edit Profile' : 'Complete Profile'}
+                  </button>
                   {/* Admin Dashboard Button - Only show for admin users */}
                   {session.user.email === 'vaishnav@cloutcareers.com' && (
                     <button
@@ -308,6 +316,14 @@ export default function Dashboard() {
               {/* Conditional Dashboard Content */}
               {currentView === 'node' ? (
                 <>
+                  {/* Trust Network Manager - New unified interface (moved to top) */}
+                  <div className="mb-8">
+                    <TrustNetworkManager onRefresh={() => {
+                      fetchRelationships()
+                      fetchUserStats()
+                    }} />
+                  </div>
+
                   {/* Received Endorsements Notifications */}
                   <EndorsementNotifications className="mb-8" />
 
@@ -316,19 +332,14 @@ export default function Dashboard() {
                     <EarningsCloutCard />
                   </div>
 
-              {/* Pending Network Requests - Show at top if any exist */}
-              <div className="mb-8">
-                <PendingNetworkRequests />
-              </div>
+                  {/* Pending Network Requests - Show at top if any exist */}
+                  <div className="mb-8">
+                    <PendingNetworkRequests />
+                  </div>
 
               {/* Clout Journey Section */}
               <div className="mb-8">
                 <CloutJourneyCard />
-              </div>
-
-              {/* Network Connections Section */}
-              <div className="mb-8">
-                <NetworkConnectionsCard />
               </div>
 
               {/* Endorsement Section */}
@@ -366,16 +377,17 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
-                <div className="space-y-4">
-                  <h2 className="text-lg font-semibold text-gray-900">Profile Information</h2>
-
-                  <div className="space-y-2">
-                    <p><strong>Email:</strong> {session.user.email}</p>
-                    <p><strong>Profile Complete:</strong> {session.user.isProfileComplete ? '✅ Yes' : '❌ No'}</p>
+              {/* Profile Information Section */}
+              <div className="mb-8 bg-white border border-gray-200 rounded-lg p-6">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h2>
+                    <div className="space-y-2">
+                      <p><strong>Email:</strong> {session.user.email}</p>
+                      <p><strong>Profile Complete:</strong> {session.user.isProfileComplete ? '✅ Yes' : '❌ No'}</p>
+                    </div>
                   </div>
-
-                  <div className="mt-4">
+                  <div>
                     <button
                       onClick={() => router.push('/onboard')}
                       className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
@@ -384,173 +396,11 @@ export default function Dashboard() {
                     </button>
                   </div>
                 </div>
-
-                <div className="space-y-4 lg:col-span-2">
-                  <h2 className="text-lg font-semibold text-gray-900">Add to Trusted Network</h2>
-                  <div className="bg-white border border-gray-200 rounded-lg p-6">
-                    <p className="text-sm text-gray-600 mb-4">
-                      Enter someone's email to add them to your trusted network. We'll send them an invitation or validation request.
-                    </p>
-
-                    <form onSubmit={handleRelationshipSubmit} className="space-y-4">
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Email Address *
-                        </label>
-                        <input
-                          type="email"
-                          required
-                          value={relationshipForm.email}
-                          onChange={(e) => setRelationshipForm(prev => ({ ...prev, email: e.target.value }))}
-                          className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                          placeholder="colleague@example.com"
-                        />
-                      </div>
-
-                      <div>
-                        <label className="block text-sm font-medium text-gray-700 mb-1">
-                          Trust Allocation: {relationshipForm.trustAllocation} points
-                        </label>
-                        <input
-                          type="range"
-                          min="1"
-                          max="100"
-                          value={relationshipForm.trustAllocation}
-                          onChange={(e) => setRelationshipForm(prev => ({ ...prev, trustAllocation: parseInt(e.target.value) }))}
-                          className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer slider"
-                        />
-                        <div className="flex justify-between text-xs text-gray-500 mt-1">
-                          <span>1 (Minimal)</span>
-                          <span>100 (Maximum)</span>
-                        </div>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Available: {userStats.availableTrust} points
-                        </p>
-                      </div>
-
-                      {relationshipMessage && (
-                        <div className={`text-center text-sm p-3 rounded-md ${
-                          relationshipMessage.includes('sent') || relationshipMessage.includes('request')
-                            ? 'bg-green-50 text-green-700 border border-green-200'
-                            : 'bg-red-50 text-red-700 border border-red-200'
-                        }`}>
-                          {relationshipMessage}
-                        </div>
-                      )}
-
-                      <button
-                        type="submit"
-                        disabled={relationshipLoading}
-                        className="w-full px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
-                      >
-                        {relationshipLoading ? 'Sending...' : 'Add to Trusted Network'}
-                      </button>
-                    </form>
-
-                    <div className="mt-4 pt-4 border-t border-gray-200">
-                      {userStatsLoading ? (
-                        <p className="text-xs text-gray-500">Loading stats...</p>
-                      ) : (
-                        <div className="space-y-1">
-                          <p className="text-xs text-gray-500">
-                            <strong>{userStats.availableTrust}</strong> trust points available •
-                            <strong className="ml-1">{userStats.allocatedTrust}</strong> points allocated •
-                            Total: <strong className="ml-1">{userStats.totalTrustPoints}</strong>
-                          </p>
-                          <p className="text-xs text-gray-400">
-                            Distribute your trust across your network as you see fit
-                          </p>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
               </div>
 
-              {/* Network Section */}
-              <div className="border-t border-gray-200 pt-6 mb-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Your Network</h2>
-                  <div className="flex space-x-4 text-sm">
-                    <span className="text-green-600">✅ {relationships.counts.confirmed} Confirmed</span>
-                    <span className="text-yellow-600">⏳ {relationships.counts.pending + relationships.pendingInvitations.length} Pending</span>
-                    <span className="text-gray-500">❌ {relationships.counts.declined} Declined</span>
-                  </div>
-                </div>
-
-                {relationshipsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500">Loading network...</div>
-                  </div>
-                ) : relationships.connections.length === 0 && relationships.pendingInvitations.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500">No connections yet. Start by inviting someone above!</div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {/* Existing relationships */}
-                    {relationships.connections.map((connection) => (
-                      <div key={connection.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-gray-900">{connection.connectedUser.name}</h3>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            connection.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                            connection.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {connection.status}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">{connection.connectedUser.email}</p>
-                        {connection.status === 'CONFIRMED' && (
-                          <p className="text-xs text-gray-500 mt-2">
-                            Trust Allocated: {connection.myTrustAllocated} points
-                          </p>
-                        )}
-                        {connection.status === 'PENDING' && (
-                          <div className="mt-3">
-                            {connection.canValidate ? (
-                              <button
-                                onClick={() => router.push(`/relationships/validate/${connection.id}`)}
-                                className="text-xs px-3 py-1 bg-indigo-600 text-white rounded hover:bg-indigo-700"
-                              >
-                                Complete Validation
-                              </button>
-                            ) : (
-                              <span className="text-xs text-gray-500 italic">
-                                Awaiting their confirmation
-                              </span>
-                            )}
-                          </div>
-                        )}
-                        <p className="text-xs text-gray-400 mt-2">
-                          {new Date(connection.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-
-                    {/* Pending invitations to new users */}
-                    {relationships.pendingInvitations.map((invitation) => (
-                      <div key={`inv-${invitation.id}`} className="bg-white border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-gray-900">{invitation.email}</h3>
-                          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 text-blue-800">
-                            INVITED
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">Invitation sent to new user</p>
-                        <div className="mt-3">
-                          <span className="text-xs text-gray-500 italic">
-                            Awaiting signup
-                          </span>
-                        </div>
-                        <p className="text-xs text-gray-400 mt-2">
-                          {new Date(invitation.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
+              {/* Legacy Network Connections Card - Now integrated into Trust Network Manager */}
+              <div className="mb-8">
+                <NetworkConnectionsCard />
               </div>
 
               {/* People You've Endorsed Section */}
