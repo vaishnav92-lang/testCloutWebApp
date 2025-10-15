@@ -208,33 +208,83 @@ export default function AdminTrustAllocationsPage() {
           </div>
         )}
 
-        {/* Summary */}
-        <div className="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-md">
-          <div className="flex justify-between items-center">
-            <div>
-              <p className="text-blue-800 font-medium">
-                Total Allocation: {(totalAllocation * 100).toFixed(1)}%
-              </p>
-              <p className="text-blue-600 text-sm">
-                {Math.abs(remainingAllocation) < 0.01
-                  ? '✅ Perfect! Ready to save.'
-                  : `${remainingAllocation > 0 ? 'Need' : 'Over by'} ${Math.abs(remainingAllocation * 100).toFixed(1)}%`
-                }
-              </p>
+        {/* Enhanced Trust Allocation Summary */}
+        <div className={`mb-6 p-6 border-2 rounded-lg ${
+          Math.abs(remainingAllocation) < 0.01
+            ? 'bg-green-50 border-green-300'
+            : remainingAllocation > 0
+              ? 'bg-yellow-50 border-yellow-300'
+              : 'bg-red-50 border-red-300'
+        }`}>
+          <div className="flex justify-between items-center mb-4">
+            <div className="flex-1">
+              <div className="flex items-center space-x-4 mb-2">
+                <div className="text-2xl font-bold">
+                  <span className={Math.abs(remainingAllocation) < 0.01 ? 'text-green-700' : 'text-gray-700'}>
+                    {(totalAllocation * 100).toFixed(1)}%
+                  </span>
+                  <span className="text-lg text-gray-500"> / 100%</span>
+                </div>
+                <div className="flex-1 bg-gray-200 rounded-full h-4 max-w-xs">
+                  <div
+                    className={`h-4 rounded-full transition-all duration-300 ${
+                      Math.abs(remainingAllocation) < 0.01
+                        ? 'bg-green-500'
+                        : remainingAllocation > 0
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                    }`}
+                    style={{ width: `${Math.min(totalAllocation * 100, 100)}%` }}
+                  ></div>
+                </div>
+              </div>
+
+              <div className="text-sm">
+                {Math.abs(remainingAllocation) < 0.01 ? (
+                  <span className="text-green-700 font-medium">
+                    ✅ Perfect allocation! All 100% trust distributed across {users.length} users
+                  </span>
+                ) : remainingAllocation > 0 ? (
+                  <span className="text-yellow-700 font-medium">
+                    ⚠️ Need {Math.abs(remainingAllocation * 100).toFixed(1)}% more to reach 100%
+                  </span>
+                ) : (
+                  <span className="text-red-700 font-medium">
+                    ❌ Over allocated by {Math.abs(remainingAllocation * 100).toFixed(1)}% - reduce allocations
+                  </span>
+                )}
+              </div>
             </div>
+
             <div className="space-x-2">
               <button
                 onClick={resetToEqual}
-                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600"
+                className="px-4 py-2 bg-gray-500 text-white rounded-md hover:bg-gray-600 transition-colors"
               >
                 Reset to Equal
+                <div className="text-xs text-gray-300">
+                  ({(100/users.length).toFixed(2)}% each)
+                </div>
               </button>
               <button
                 onClick={triggerComputation}
-                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700"
+                className="px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors"
               >
                 Compute Scores
               </button>
+            </div>
+          </div>
+
+          {/* Quick allocation stats */}
+          <div className="grid grid-cols-3 gap-4 text-sm text-gray-600 border-t pt-3">
+            <div>
+              <span className="font-medium">Users:</span> {users.length}
+            </div>
+            <div>
+              <span className="font-medium">Avg per user:</span> {users.length > 0 ? (totalAllocation * 100 / users.length).toFixed(2) : 0}%
+            </div>
+            <div>
+              <span className="font-medium">Equal share:</span> {users.length > 0 ? (100 / users.length).toFixed(2) : 0}%
             </div>
           </div>
         </div>
