@@ -30,7 +30,7 @@ export default function AdminTrustAllocationsPage() {
   const [message, setMessage] = useState('')
   const [error, setError] = useState('')
 
-  const isAdmin = session?.user?.email === 'vaishnav@cloutcareers.com'
+  const isAdmin = session?.user?.isAdmin === true
 
   useEffect(() => {
     if (status === 'loading') return
