@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
+import NetworkInfluenceChart from '@/components/NetworkInfluenceChart'
 
 interface User {
   id: string
@@ -371,6 +372,11 @@ export default function AdminTrustAllocationsPage() {
             </div>
           </div>
         )}
+
+        {/* Network Influence Chart */}
+        <div className="mt-8">
+          <NetworkInfluenceChart />
+        </div>
       </div>
     </div>
   )
