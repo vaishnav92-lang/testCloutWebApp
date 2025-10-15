@@ -162,6 +162,7 @@ export async function GET(request: NextRequest) {
       ]
     })
 
+
     return NextResponse.json({
       currentAllocations: allocations.map(allocation => ({
         receiverId: allocation.receiverId,
