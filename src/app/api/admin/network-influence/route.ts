@@ -59,11 +59,11 @@ export async function GET(request: NextRequest) {
 
     // Get latest computation info
     const latestComputation = await prisma.trustComputationLog.findFirst({
-      orderBy: { createdAt: 'desc' },
+      orderBy: { computedAt: 'desc' },
       select: {
-        iterations: true,
+        numIterations: true,
         converged: true,
-        createdAt: true,
+        computedAt: true,
         triggeredBy: true
       }
     })
@@ -85,7 +85,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({
       networkInfluence,
       totalUsers: trustScores.length,
-      lastComputation: latestComputation
+      lastComputation: latestComputation ? {
+        iterations: latestComputation.numIterations,
+        converged: latestComputation.converged,
+        createdAt: latestComputation.computedAt,
+        triggeredBy: latestComputation.triggeredBy
+      } : null
     })
 
   } catch (error) {
