@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react'
 import { useSession } from 'next-auth/react'
 import { redirect } from 'next/navigation'
 import NetworkInfluenceChart from '@/components/NetworkInfluenceChart'
+import AdminInviteUsers from '@/components/AdminInviteUsers'
 
 interface User {
   id: string
@@ -376,6 +377,11 @@ export default function AdminTrustAllocationsPage() {
         {/* Network Influence Chart */}
         <div className="mt-8">
           <NetworkInfluenceChart />
+        </div>
+
+        {/* Admin Invite Users */}
+        <div className="mt-8">
+          <AdminInviteUsers />
         </div>
       </div>
     </div>
