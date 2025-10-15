@@ -61,6 +61,17 @@ export async function POST(request: NextRequest) {
     }
 
     // =========================================================================
+    // PREVENT SELF-ALLOCATION: User cannot allocate trust to themselves
+    // =========================================================================
+
+    const selfAllocation = allocations.find(allocation => allocation.receiverId === currentUser.id)
+    if (selfAllocation) {
+      return NextResponse.json({
+        error: 'Cannot allocate trust to yourself'
+      }, { status: 400 })
+    }
+
+    // =========================================================================
     // SAVE TO DATABASE
     // =========================================================================
 
@@ -147,8 +158,13 @@ export async function GET(request: NextRequest) {
       }
     })
 
-    // Fetch all users for the allocation interface
+    // Fetch all users for the allocation interface (excluding current user to prevent self-allocation)
     const allUsers = await prisma.user.findMany({
+      where: {
+        id: {
+          not: currentUser.id  // Exclude current user from allocation list
+        }
+      },
       select: {
         id: true,
         email: true,
