@@ -102,7 +102,7 @@ export async function POST(request: NextRequest) {
       select: { id: true, firstName: true, lastName: true }
     })
 
-    // BUILD COMPREHENSIVE ENDORSEMENT CONTENT
+    // BUILD LEGACY ENDORSEMENT CONTENT FOR BACKWARD COMPATIBILITY
     const endorsementContent = `
 ENDORSER: ${endorserName} (${endorserEmail})
 ENDORSED: ${endorsedName} (${endorsedEmail})
@@ -132,13 +132,24 @@ RECOMMENDATION:
 ${recommendation}
     `.trim()
 
-    // CREATE ENDORSEMENT RECORD
+    // CREATE ENDORSEMENT RECORD WITH DETAILED FIELDS
     const endorsement = await prisma.endorsement.create({
       data: {
         endorserId: endorser.id,
         endorsedUserId: endorsedUser?.id || null,
         endorsedUserEmail: endorsedEmail,
-        endorsementContent: endorsementContent,
+        endorsementContent: endorsementContent, // Legacy field
+        // Detailed endorsement fields
+        relationship,
+        workTogether,
+        strengths,
+        rolesValueAdd,
+        workOutput,
+        hoursInteraction,
+        complementaryPartner,
+        recommendation,
+        // Regular endorsement (not job-specific)
+        isJobReferral: false,
         videoUrl: null,
         status: 'PENDING_CANDIDATE_ACTION',
         candidateNotifiedAt: new Date()

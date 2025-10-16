@@ -199,6 +199,7 @@ model Job {
   cloutActivities      CloutActivity[]
   earningsTransactions EarningsTransaction[]
   endorsementReleases  EndorsementRelease[]
+  endorsements         Endorsement[]
   applications         JobApplication[]
   company              Company               @relation(fields: [companyId], references: [id])
   owner                User                  @relation(fields: [ownerId], references: [id])
@@ -225,7 +226,24 @@ model Endorsement {
   endorserId           String
   endorsedUserId       String?
   endorsedUserEmail    String
-  endorsementContent   String
+
+  // Legacy field for backward compatibility
+  endorsementContent   String?
+
+  // Detailed endorsement fields
+  relationship         String?
+  workTogether         String?
+  strengths            String?
+  rolesValueAdd        String?
+  workOutput           String?
+  hoursInteraction     String?
+  complementaryPartner String?
+  recommendation       String?
+
+  // Job referral fields
+  jobId                String?
+  isJobReferral        Boolean              @default(false)
+
   videoUrl             String?
   status               EndorsementStatus    @default(PENDING_CANDIDATE_ACTION)
   candidateNotifiedAt  DateTime?
@@ -236,6 +254,7 @@ model Endorsement {
   releases             EndorsementRelease[]
   endorsedUser         User?                @relation("EndorsementReceived", fields: [endorsedUserId], references: [id])
   endorser             User                 @relation("EndorsementGiven", fields: [endorserId], references: [id])
+  job                  Job?                 @relation(fields: [jobId], references: [id])
 
   @@unique([endorserId, endorsedUserEmail])
   @@map("endorsements")

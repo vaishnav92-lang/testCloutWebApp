@@ -10,7 +10,6 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
-import JobReferralModal from '@/components/JobReferralModal'
 
 interface JobDetail {
   id: string
@@ -64,7 +63,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [job, setJob] = useState<JobDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [showReferralModal, setShowReferralModal] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -191,7 +189,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
             </div>
             <div className="flex items-center space-x-3">
               <button
-                onClick={() => setShowReferralModal(true)}
+                onClick={() => router.push(`/jobs/${job.id}/refer`)}
                 className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
               >
                 <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -341,20 +339,6 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           </div>
         </div>
       </div>
-
-      {/* Referral Modal */}
-      {job && (
-        <JobReferralModal
-          isOpen={showReferralModal}
-          onClose={() => setShowReferralModal(false)}
-          jobId={job.id}
-          jobTitle={job.title}
-          onSuccess={() => {
-            // Optionally refresh job data or show success message
-            console.log('Referral submitted successfully')
-          }}
-        />
-      )}
     </div>
   )
 }

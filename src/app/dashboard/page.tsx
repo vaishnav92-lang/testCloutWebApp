@@ -29,7 +29,6 @@ import { useEffect, useState } from 'react'
 import EndorsementForm from '@/components/EndorsementForm'
 import EndorsementNotifications from '@/components/EndorsementNotifications'
 import HiringManagerDashboard from '@/components/HiringManagerDashboard'
-import EarningsCloutCard from '@/components/EarningsCloutCard'
 import NetworkConnectionsCard from '@/components/NetworkConnectionsCard'
 import CloutJourneyCard from '@/components/CloutJourneyCard'
 import PendingNetworkRequests from '@/components/PendingNetworkRequests'
@@ -382,26 +381,6 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Profile Information Section */}
-              <div className="mb-8 bg-white border border-gray-200 rounded-lg p-6">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h2 className="text-lg font-semibold text-gray-900 mb-4">Profile Information</h2>
-                    <div className="space-y-2">
-                      <p><strong>Email:</strong> {session.user.email}</p>
-                      <p><strong>Profile Complete:</strong> {session.user.isProfileComplete ? '✅ Yes' : '❌ No'}</p>
-                    </div>
-                  </div>
-                  <div>
-                    <button
-                      onClick={() => router.push('/onboard')}
-                      className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700"
-                    >
-                      {session.user.isProfileComplete ? 'Edit Profile' : 'Complete Your Profile'}
-                    </button>
-                  </div>
-                </div>
-              </div>
 
               {/* Legacy Network Connections Card - Now integrated into Trust Network Manager */}
               <div className="mb-8">
@@ -527,7 +506,7 @@ export default function Dashboard() {
                               className="flex-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation() // Prevent card click from triggering
-                                router.push(`/jobs/${job.id}`)
+                                router.push(`/jobs/${job.id}/refer`)
                               }}
                             >
                               Refer Talent
