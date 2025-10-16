@@ -522,15 +522,26 @@ export default function Dashboard() {
                             )}
                           </div>
 
-                          <button
-                            className="w-full px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
-                            onClick={(e) => {
-                              e.stopPropagation() // Prevent card click from triggering
-                              router.push(`/jobs/${job.id}`)
-                            }}
-                          >
-                            View Details
-                          </button>
+                          <div className="flex space-x-2">
+                            <button
+                              className="flex-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation() // Prevent card click from triggering
+                                router.push(`/jobs/${job.id}`)
+                              }}
+                            >
+                              Refer Talent
+                            </button>
+                            <button
+                              className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation() // Prevent card click from triggering
+                                router.push(`/jobs/${job.id}`)
+                              }}
+                            >
+                              View Details
+                            </button>
+                          </div>
                         </div>
                       ))}
                     </div>

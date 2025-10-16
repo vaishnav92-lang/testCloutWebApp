@@ -188,6 +188,7 @@ model Job {
   locationType         LocationType          @default(REMOTE)
   mustHaves            String?
   nonWorkSignals       String?
+  organizationDescription String?
   publishedAt          DateTime?
   referralBudget       Int?
   referralPreference   ReferralPreference    @default(MANUAL_SCREEN)

@@ -74,6 +74,7 @@ export async function PUT(
       currency,
       equityOffered,
       equityRange,
+      organizationDescription,
       dayToDayDescription,
       archetypes,
       nonWorkSignals,
@@ -103,6 +104,7 @@ export async function PUT(
     if (currency !== undefined) updateData.currency = currency
     if (equityOffered !== undefined) updateData.equityOffered = equityOffered
     if (equityRange !== undefined) updateData.equityRange = equityRange
+    if (organizationDescription !== undefined) updateData.organizationDescription = organizationDescription
     if (dayToDayDescription !== undefined) updateData.dayToDayDescription = dayToDayDescription
     if (archetypes !== undefined) updateData.archetypes = archetypes
     if (nonWorkSignals !== undefined) updateData.nonWorkSignals = nonWorkSignals

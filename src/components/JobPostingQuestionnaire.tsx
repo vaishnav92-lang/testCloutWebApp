@@ -30,6 +30,7 @@ interface JobFormData {
   currency: string
   equityOffered: boolean
   equityRange: string
+  organizationDescription: string
   dayToDayDescription: string
 
   // Section 2: What You're Really Looking For
@@ -67,6 +68,7 @@ const initialFormData: JobFormData = {
   currency: 'USD',
   equityOffered: false,
   equityRange: '',
+  organizationDescription: '',
   dayToDayDescription: '',
   archetypes: '',
   nonWorkSignals: '',
@@ -117,6 +119,7 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
               currency: job.currency || 'USD',
               equityOffered: job.equityOffered || false,
               equityRange: job.equityRange || '',
+              organizationDescription: job.organizationDescription || '',
               dayToDayDescription: job.dayToDayDescription || '',
               archetypes: job.archetypes || '',
               nonWorkSignals: job.nonWorkSignals || '',
@@ -386,6 +389,31 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
               />
             </div>
           )}
+        </div>
+      </div>
+
+      {/* Organization Description */}
+      <div>
+        <label className="block text-sm font-medium text-gray-700 mb-2">
+          What does your organization do? *
+        </label>
+        <textarea
+          required
+          rows={3}
+          value={formData.organizationDescription}
+          onChange={(e) => updateFormData({ organizationDescription: e.target.value })}
+          className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
+          placeholder="Briefly describe your company's mission, product, or service"
+          maxLength={300}
+        />
+        <div className="flex justify-between text-xs text-gray-500 mt-1">
+          <span>Help candidates understand your company's purpose and focus</span>
+          <span>{formData.organizationDescription.length}/300</span>
+        </div>
+        <div className="mt-2 p-3 bg-gray-50 rounded-md">
+          <p className="text-sm text-gray-600">
+            <strong>Example:</strong> "We build AI-powered marketing tools that help small businesses grow. Our platform automates social media campaigns and provides actionable insights to increase customer engagement."
+          </p>
         </div>
       </div>
 

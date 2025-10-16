@@ -10,6 +10,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import JobReferralModal from '@/components/JobReferralModal'
 
 interface JobDetail {
   id: string
@@ -21,6 +22,7 @@ interface JobDetail {
   currency: string
   equityOffered: boolean
   equityRange?: string
+  organizationDescription?: string
   dayToDayDescription?: string
   archetypes?: string
   nonWorkSignals?: string
@@ -62,6 +64,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   const [job, setJob] = useState<JobDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [showReferralModal, setShowReferralModal] = useState(false)
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -186,9 +189,20 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                 {job._count.applications} application{job._count.applications !== 1 ? 's' : ''}
               </span>
             </div>
-            <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-              Apply Now
-            </button>
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={() => setShowReferralModal(true)}
+                className="px-6 py-3 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors shadow-md hover:shadow-lg"
+              >
+                <svg className="w-5 h-5 mr-2 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
+                </svg>
+                Refer Talent
+              </button>
+              <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                Apply Now
+              </button>
+            </div>
           </div>
         </div>
 
@@ -196,6 +210,14 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           {/* Main Content */}
           <div className="lg:col-span-2 space-y-6">
+            {/* Organization Description */}
+            {job.organizationDescription && (
+              <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
+                <h2 className="text-xl font-semibold text-gray-900 mb-4">About the Organization</h2>
+                <p className="text-gray-700 leading-relaxed">{job.organizationDescription}</p>
+              </div>
+            )}
+
             {/* Day-to-day Description */}
             {job.dayToDayDescription && (
               <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
@@ -319,6 +341,20 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
           </div>
         </div>
       </div>
+
+      {/* Referral Modal */}
+      {job && (
+        <JobReferralModal
+          isOpen={showReferralModal}
+          onClose={() => setShowReferralModal(false)}
+          jobId={job.id}
+          jobTitle={job.title}
+          onSuccess={() => {
+            // Optionally refresh job data or show success message
+            console.log('Referral submitted successfully')
+          }}
+        />
+      )}
     </div>
   )
 }

@@ -18,6 +18,7 @@ interface Job {
   createdAt: string
   publishedAt?: string
   referralBudget?: number
+  organizationDescription?: string
   dayToDayDescription?: string
   archetypes?: string
   nonWorkSignals?: string
@@ -227,6 +228,16 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                   )}
                 </div>
               </div>
+
+              {/* Organization Description */}
+              {job.organizationDescription && (
+                <div className="mb-8">
+                  <h3 className="text-xl font-semibold text-gray-900 mb-4">About the Organization</h3>
+                  <div className="prose max-w-none">
+                    <p className="text-gray-700 whitespace-pre-wrap">{job.organizationDescription}</p>
+                  </div>
+                </div>
+              )}
 
               {/* Job Description */}
               {job.description && (
