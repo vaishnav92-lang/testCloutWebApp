@@ -563,18 +563,17 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
               />
             </div>
 
-            {/* Recommendation */}
+            {/* Additional Information */}
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-1">
-                Would you recommend them? Why? *
+                Anything else we should know? (optional)
               </label>
               <textarea
-                required
                 rows={3}
                 value={formData.recommendation}
                 onChange={(e) => handleInputChange('recommendation', e.target.value)}
                 className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                placeholder="Absolutely. They would be a valuable addition to any team because..."
+                placeholder="Any additional context, achievements, or details that would be helpful..."
               />
             </div>
 

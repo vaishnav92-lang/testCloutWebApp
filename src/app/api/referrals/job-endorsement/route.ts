@@ -54,7 +54,7 @@ export async function POST(request: NextRequest) {
     // VALIDATE REQUIRED FIELDS
     if (!jobId || !candidateEmail || !candidateName || !relationship ||
         !workTogether || !strengths || !rolesValueAdd || !workOutput ||
-        !hoursInteraction || !complementaryPartner || !recommendation) {
+        !hoursInteraction || !complementaryPartner) {
       return NextResponse.json({
         error: 'Missing required fields'
       }, { status: 400 })

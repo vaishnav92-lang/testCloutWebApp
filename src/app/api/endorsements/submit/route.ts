@@ -55,9 +55,9 @@ export async function POST(request: NextRequest) {
     // VALIDATION
     if (!endorsedEmail || !endorsedName || !relationship || !workTogether ||
         !strengths || !rolesValueAdd || !workOutput || !hoursInteraction ||
-        !complementaryPartner || !recommendation) {
+        !complementaryPartner) {
       return NextResponse.json({
-        error: 'All fields are required'
+        error: 'All required fields must be filled'
       }, { status: 400 })
     }
 
