@@ -1,8 +1,8 @@
 /**
  * TRUST MATRIX API
  *
- * Provides a matrix of trust allocations between users.
- * Shows who trusts whom and by how much, with totals.
+ * Provides actual EigenTrust computation data.
+ * Shows input allocations, output scores, and computation details.
  */
 
 import { NextRequest, NextResponse } from 'next/server'
@@ -21,15 +21,57 @@ export async function GET(request: NextRequest) {
       }, { status: 403 })
     }
 
-    // FETCH ALL USERS WITH CLOUT SCORES
-    const users = await prisma.user.findMany({
+    // GET ACTUAL TRUST ALLOCATIONS (INPUT TO EIGENTRUST)
+    const trustAllocations = await prisma.trustAllocation.findMany({
+      include: {
+        giver: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        },
+        receiver: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      }
+    })
+
+    // GET COMPUTED TRUST SCORES (OUTPUT FROM EIGENTRUST)
+    const computedScores = await prisma.computedTrustScore.findMany({
+      include: {
+        user: {
+          select: {
+            id: true,
+            email: true,
+            firstName: true,
+            lastName: true
+          }
+        }
+      },
+      orderBy: {
+        trustScore: 'desc'
+      }
+    })
+
+    // GET LAST COMPUTATION DETAILS
+    const lastComputation = await prisma.trustComputationLog.findFirst({
+      orderBy: { computedAt: 'desc' }
+    })
+
+    // GET ALL USERS FOR MATRIX
+    const allUsers = await prisma.user.findMany({
       select: {
         id: true,
         email: true,
         firstName: true,
-        lastName: true,
-        cloutScore: true,
-        cloutPercentile: true
+        lastName: true
       },
       orderBy: [
         { firstName: 'asc' },
@@ -38,86 +80,54 @@ export async function GET(request: NextRequest) {
       ]
     })
 
-    // FETCH ALL TRUST RELATIONSHIPS
-    const relationships = await prisma.relationship.findMany({
-      where: {
-        status: 'CONFIRMED'
-      },
-      select: {
-        user1Id: true,
-        user2Id: true,
-        user1TrustAllocated: true,
-        user2TrustAllocated: true
-      }
-    })
+    // FORMAT TRUST ALLOCATIONS
+    const formattedAllocations = trustAllocations.map(allocation => ({
+      giverId: allocation.giverId,
+      giverName: allocation.giver.firstName && allocation.giver.lastName
+        ? `${allocation.giver.firstName} ${allocation.giver.lastName}`
+        : allocation.giver.email,
+      receiverId: allocation.receiverId,
+      receiverName: allocation.receiver.firstName && allocation.receiver.lastName
+        ? `${allocation.receiver.firstName} ${allocation.receiver.lastName}`
+        : allocation.receiver.email,
+      proportion: allocation.proportion
+    }))
 
-    // BUILD TRUST MATRIX
-    const userMap = new Map(users.map(user => [user.id, {
-      ...user,
-      displayName: user.firstName && user.lastName
+    // FORMAT COMPUTED SCORES
+    const formattedScores = computedScores.map(score => ({
+      userId: score.userId,
+      userName: score.user.firstName && score.user.lastName
+        ? `${score.user.firstName} ${score.user.lastName}`
+        : score.user.email,
+      trustScore: score.trustScore,
+      rank: score.rank,
+      influencePercentage: score.trustScore * 100 // Convert to percentage
+    }))
+
+    // FORMAT COMPUTATION INFO
+    const computationInfo = lastComputation ? {
+      iterations: lastComputation.numIterations,
+      converged: lastComputation.converged,
+      computedAt: lastComputation.computedAt.toISOString(),
+      triggeredBy: lastComputation.triggeredBy,
+      numUsers: lastComputation.numUsers,
+      decayFactor: lastComputation.decayFactor,
+      convergenceThreshold: lastComputation.convergenceThreshold
+    } : null
+
+    // FORMAT ALL USERS
+    const formattedUsers = allUsers.map(user => ({
+      id: user.id,
+      name: user.firstName && user.lastName
         ? `${user.firstName} ${user.lastName}`
         : user.email
-    }]))
-
-    // Initialize matrix
-    const matrix: Record<string, Record<string, number>> = {}
-    const totalReceived: Record<string, number> = {}
-    const totalGiven: Record<string, number> = {}
-
-    // Initialize all users in matrix
-    users.forEach(user => {
-      matrix[user.id] = {}
-      totalReceived[user.id] = 0
-      totalGiven[user.id] = 0
-
-      users.forEach(otherUser => {
-        matrix[user.id][otherUser.id] = 0
-      })
-    })
-
-    // Fill matrix with trust allocations
-    relationships.forEach(rel => {
-      // User1 trusts User2
-      if (rel.user2TrustAllocated && rel.user2TrustAllocated > 0) {
-        matrix[rel.user1Id][rel.user2Id] = rel.user2TrustAllocated
-        totalGiven[rel.user1Id] += rel.user2TrustAllocated
-        totalReceived[rel.user2Id] += rel.user2TrustAllocated
-      }
-
-      // User2 trusts User1
-      if (rel.user1TrustAllocated && rel.user1TrustAllocated > 0) {
-        matrix[rel.user2Id][rel.user1Id] = rel.user1TrustAllocated
-        totalGiven[rel.user2Id] += rel.user1TrustAllocated
-        totalReceived[rel.user1Id] += rel.user1TrustAllocated
-      }
-    })
-
-    // Format response
-    const matrixData = users.map(user => ({
-      id: user.id,
-      displayName: userMap.get(user.id)?.displayName || user.email,
-      trustGiven: users.map(otherUser => ({
-        userId: otherUser.id,
-        amount: matrix[user.id][otherUser.id]
-      })),
-      totalGiven: totalGiven[user.id],
-      totalReceived: totalReceived[user.id]
     }))
 
     return NextResponse.json({
-      users: users.map(user => ({
-        id: user.id,
-        displayName: userMap.get(user.id)?.displayName || user.email,
-        cloutScore: Math.round((user.cloutScore || 0) * 100), // Convert to 0-100 scale
-        cloutPercentile: user.cloutPercentile || 0
-      })),
-      relationshipMatrix: matrixData,
-      summary: {
-        totalUsers: users.length,
-        totalRelationships: relationships.length,
-        totalTrustInSystem: Object.values(totalGiven).reduce((sum, val) => sum + val, 0),
-        totalCloutScores: users.reduce((sum, user) => sum + ((user.cloutScore || 0) * 100), 0)
-      }
+      trustAllocations: formattedAllocations,
+      computedScores: formattedScores,
+      computation: computationInfo,
+      allUsers: formattedUsers
     })
 
   } catch (error) {

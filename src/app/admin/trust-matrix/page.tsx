@@ -5,35 +5,37 @@ import { useRouter } from 'next/navigation'
 import { useState, useEffect } from 'react'
 import Link from 'next/link'
 
-interface User {
-  id: string
-  displayName: string
-  cloutScore: number
-  cloutPercentile: number
+interface TrustAllocation {
+  giverId: string
+  giverName: string
+  receiverId: string
+  receiverName: string
+  proportion: number
 }
 
-interface TrustEntry {
+interface ComputedScore {
   userId: string
-  amount: number
+  userName: string
+  trustScore: number
+  rank: number
+  influencePercentage: number
 }
 
-interface MatrixUser {
-  id: string
-  displayName: string
-  trustGiven: TrustEntry[]
-  totalGiven: number
-  totalReceived: number
+interface ComputationInfo {
+  iterations: number
+  converged: boolean
+  computedAt: string
+  triggeredBy: string
+  numUsers: number
+  decayFactor: number
+  convergenceThreshold: number
 }
 
 interface TrustMatrixData {
-  users: User[]
-  relationshipMatrix: MatrixUser[]
-  summary: {
-    totalUsers: number
-    totalRelationships: number
-    totalTrustInSystem: number
-    totalCloutScores: number
-  }
+  trustAllocations: TrustAllocation[]
+  computedScores: ComputedScore[]
+  computation: ComputationInfo
+  allUsers: Array<{id: string, name: string}>
 }
 
 export default function TrustMatrixPage() {
@@ -78,13 +80,6 @@ export default function TrustMatrixPage() {
     }
   }
 
-  const getTrustValue = (giverId: string, receiverId: string): number => {
-    if (!matrixData) return 0
-    const giver = matrixData.relationshipMatrix.find(u => u.id === giverId)
-    const trustEntry = giver?.trustGiven.find(t => t.userId === receiverId)
-    return trustEntry?.amount || 0
-  }
-
   if (status === 'loading') {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -93,29 +88,12 @@ export default function TrustMatrixPage() {
     )
   }
 
-  if (!session) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold text-gray-900 mb-4">Admin Access Required</h1>
-          <p className="text-gray-600 mb-6">Please sign in to access the admin panel.</p>
-          <button
-            onClick={() => router.push('/auth/signin')}
-            className="bg-indigo-600 text-white px-4 py-2 rounded-md hover:bg-indigo-700"
-          >
-            Sign In
-          </button>
-        </div>
-      </div>
-    )
-  }
-
-  if (!isAdmin) {
+  if (!session || !isAdmin) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <h1 className="text-2xl font-bold text-red-600 mb-4">Access Denied</h1>
-          <p className="text-gray-600 mb-6">You must be an admin to access this page.</p>
+          <p className="text-gray-600 mb-6">Admin access required.</p>
           <button
             onClick={() => router.push('/dashboard')}
             className="bg-gray-600 text-white px-4 py-2 rounded-md hover:bg-gray-700"
@@ -136,8 +114,8 @@ export default function TrustMatrixPage() {
           <div className="border-b border-gray-200 pb-4 mb-8">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold text-gray-900">Trust Matrix</h1>
-                <p className="text-gray-600 mt-2">Trust allocations between users</p>
+                <h1 className="text-3xl font-bold text-gray-900">EigenTrust Computation Data</h1>
+                <p className="text-gray-600 mt-2">Actual calculations from the last trust computation round</p>
               </div>
               <Link
                 href="/admin"
@@ -150,7 +128,7 @@ export default function TrustMatrixPage() {
 
           {loading && (
             <div className="text-center py-8">
-              <div className="text-lg text-gray-600">Loading trust matrix...</div>
+              <div className="text-lg text-gray-600">Loading computation data...</div>
             </div>
           )}
 
@@ -168,265 +146,198 @@ export default function TrustMatrixPage() {
 
           {matrixData && (
             <>
-              {/* Summary Stats */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">U</span>
-                        </div>
-                      </div>
-                      <div className="ml-4 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Total Users</dt>
-                          <dd className="text-lg font-semibold text-gray-900">{matrixData.summary.totalUsers}</dd>
-                        </dl>
-                      </div>
+              {/* Computation Info */}
+              <div className="bg-white shadow rounded-lg p-6 mb-8">
+                <h2 className="text-xl font-bold text-gray-900 mb-4">Last Computation Details</h2>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <div>
+                    <div className="font-medium text-gray-500">Iterations</div>
+                    <div className="text-lg font-bold text-blue-600">{matrixData.computation.iterations}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-500">Converged</div>
+                    <div className={`text-lg font-bold ${matrixData.computation.converged ? 'text-green-600' : 'text-red-600'}`}>
+                      {matrixData.computation.converged ? 'YES' : 'NO'}
                     </div>
                   </div>
-                </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">R</span>
-                        </div>
-                      </div>
-                      <div className="ml-4 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Relationships</dt>
-                          <dd className="text-lg font-semibold text-gray-900">{matrixData.summary.totalRelationships}</dd>
-                        </dl>
-                      </div>
-                    </div>
+                  <div>
+                    <div className="font-medium text-gray-500">Users</div>
+                    <div className="text-lg font-bold text-purple-600">{matrixData.computation.numUsers}</div>
+                  </div>
+                  <div>
+                    <div className="font-medium text-gray-500">Decay Factor</div>
+                    <div className="text-lg font-bold text-orange-600">{matrixData.computation.decayFactor}</div>
                   </div>
                 </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">T</span>
-                        </div>
-                      </div>
-                      <div className="ml-4 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Total Trust</dt>
-                          <dd className="text-lg font-semibold text-gray-900">{matrixData.summary.totalTrustInSystem.toFixed(1)}</dd>
-                        </dl>
-                      </div>
-                    </div>
+                <div className="mt-4 pt-4 border-t">
+                  <div className="text-sm text-gray-500">
+                    Computed: {new Date(matrixData.computation.computedAt).toLocaleString()}
                   </div>
-                </div>
-
-                <div className="bg-white overflow-hidden shadow rounded-lg">
-                  <div className="p-5">
-                    <div className="flex items-center">
-                      <div className="flex-shrink-0">
-                        <div className="w-8 h-8 bg-orange-500 rounded-full flex items-center justify-center">
-                          <span className="text-white text-sm font-bold">C</span>
-                        </div>
-                      </div>
-                      <div className="ml-4 w-0 flex-1">
-                        <dl>
-                          <dt className="text-sm font-medium text-gray-500 truncate">Total Clout</dt>
-                          <dd className="text-lg font-semibold text-gray-900">{matrixData.summary.totalCloutScores.toFixed(1)}</dd>
-                        </dl>
-                      </div>
-                    </div>
+                  <div className="text-sm text-gray-500">
+                    Triggered by: {matrixData.computation.triggeredBy}
                   </div>
                 </div>
               </div>
 
-              {/* Total Trust Received Rankings */}
+              {/* Input Trust Allocations */}
               <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
-                <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Total Trust Received Rankings</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Rank
-                          </th>
-                          <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            User
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            Total Trust
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            From Admin
-                          </th>
-                          <th className="px-6 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">
-                            From Peers
-                          </th>
+                <div className="px-6 py-4 border-b">
+                  <h2 className="text-xl font-bold text-gray-900">Input: Trust Allocations</h2>
+                  <p className="text-gray-600">These are the direct trust allocations that were input to the EigenTrust algorithm</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">From</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">To</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Proportion</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Percentage</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {matrixData.trustAllocations
+                        .sort((a, b) => b.proportion - a.proportion)
+                        .map((allocation, index) => (
+                        <tr key={index} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {allocation.giverName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
+                            {allocation.receiverName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">
+                            {allocation.proportion.toFixed(6)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-blue-600">
+                            {(allocation.proportion * 100).toFixed(3)}%
+                          </td>
                         </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {matrixData.users
-                          .map(user => {
-                            const userData = matrixData.relationshipMatrix.find(u => u.id === user.id)
-                            const adminTrust = user.cloutScore || 0
-                            const peerTrust = userData?.totalReceived || 0
-                            const totalTrust = adminTrust + peerTrust
-                            return {
-                              ...user,
-                              adminTrust,
-                              peerTrust,
-                              totalTrust
-                            }
-                          })
-                          .sort((a, b) => b.totalTrust - a.totalTrust)
-                          .map((user, index) => (
-                            <tr key={user.id} className="hover:bg-gray-50">
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-gray-600 font-medium">
-                                #{index + 1}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
-                                {user.displayName}
-                              </td>
-                              <td className={`px-6 py-4 whitespace-nowrap text-sm text-center font-bold ${
-                                user.totalTrust > 0 ? 'text-green-600' : 'text-gray-400'
-                              }`}>
-                                {user.totalTrust.toFixed(1)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-purple-600">
-                                {user.adminTrust.toFixed(1)}
-                              </td>
-                              <td className="px-6 py-4 whitespace-nowrap text-sm text-center text-blue-600">
-                                {user.peerTrust.toFixed(1)}
-                              </td>
-                            </tr>
-                          ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      ))}
+                    </tbody>
+                  </table>
                 </div>
               </div>
 
-              {/* Combined Trust Matrix */}
-              <div className="bg-white shadow rounded-lg overflow-hidden">
-                <div className="px-4 py-5 sm:p-6">
-                  <h3 className="text-lg font-medium text-gray-900 mb-4">Complete Trust Matrix (Admin + Relationships)</h3>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider sticky left-0 bg-gray-50 z-10">
-                            From \ To
-                          </th>
-                          {matrixData.users.map(user => (
-                            <th
-                              key={user.id}
-                              className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider min-w-24"
-                              title={user.displayName}
-                            >
-                              {user.displayName.length > 10
-                                ? user.displayName.substring(0, 10) + '...'
-                                : user.displayName
-                              }
-                            </th>
-                          ))}
-                          <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider bg-blue-50">
-                            Total Given
-                          </th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {/* Admin row showing admin-assigned trust scores */}
-                        <tr className="bg-purple-50 font-semibold">
-                          <td className="px-3 py-4 text-sm text-purple-900 sticky left-0 bg-purple-50 z-10">
-                            Admin (vaishnav@cloutcareers.com)
-                          </td>
-                          {matrixData.users.map(receiver => (
-                            <td
-                              key={receiver.id}
-                              className={`px-3 py-4 text-sm text-center ${
-                                receiver.cloutScore > 0
-                                  ? 'bg-purple-100 text-purple-700 font-medium'
-                                  : 'text-gray-400'
-                              }`}
-                            >
-                              {receiver.cloutScore > 0 ? receiver.cloutScore : '0'}
-                            </td>
-                          ))}
-                          <td className="px-3 py-4 text-sm text-center font-semibold bg-purple-100">
-                            {matrixData.users.reduce((sum, u) => sum + u.cloutScore, 0).toFixed(0)}
-                          </td>
-                        </tr>
-
-                        {/* User rows */}
-                        {matrixData.users.map(giver => {
-                          const giverData = matrixData.relationshipMatrix.find(u => u.id === giver.id)
-                          return (
-                            <tr key={giver.id} className="hover:bg-gray-50">
-                              <td className="px-3 py-4 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10">
-                                {giver.displayName}
-                              </td>
-                              {matrixData.users.map(receiver => {
-                                const trustValue = getTrustValue(giver.id, receiver.id)
-                                const isOwnCell = giver.id === receiver.id
-                                return (
-                                  <td
-                                    key={receiver.id}
-                                    className={`px-3 py-4 text-sm text-center ${
-                                      isOwnCell
-                                        ? 'bg-gray-100 text-gray-400'
-                                        : trustValue > 0
-                                          ? 'bg-green-50 text-green-700 font-medium'
-                                          : 'text-gray-500'
-                                    }`}
-                                  >
-                                    {isOwnCell ? '-' : trustValue.toFixed(1)}
-                                  </td>
-                                )
-                              })}
-                              <td className="px-3 py-4 text-sm text-center font-semibold bg-blue-50">
-                                {giverData?.totalGiven.toFixed(1) || '0.0'}
-                              </td>
-                            </tr>
-                          )
-                        })}
-
-                        {/* Total Received Row */}
-                        <tr className="bg-blue-50 font-semibold">
-                          <td className="px-3 py-4 text-sm text-gray-900 sticky left-0 bg-blue-50 z-10">
-                            Total Received
-                          </td>
-                          {matrixData.users.map(user => {
-                            const userData = matrixData.relationshipMatrix.find(u => u.id === user.id)
-                            const adminTrust = user.cloutScore || 0
-                            const relationshipTrust = userData?.totalReceived || 0
-                            const totalReceived = adminTrust + relationshipTrust
-                            return (
-                              <td key={user.id} className="px-3 py-4 text-sm text-center" title={`Admin: ${adminTrust}, Relationships: ${relationshipTrust.toFixed(1)}`}>
-                                {totalReceived.toFixed(1)}
-                              </td>
-                            )
-                          })}
-                          <td className="px-3 py-4 text-sm text-center bg-blue-100">
-                            {(matrixData.summary.totalTrustInSystem + matrixData.summary.totalCloutScores).toFixed(1)}
-                          </td>
-                        </tr>
-                      </tbody>
-                    </table>
-                  </div>
+              {/* Output: Computed Trust Scores */}
+              <div className="bg-white shadow rounded-lg overflow-hidden mb-8">
+                <div className="px-6 py-4 border-b">
+                  <h2 className="text-xl font-bold text-gray-900">Output: Computed Trust Scores</h2>
+                  <p className="text-gray-600">Final trust scores after {matrixData.computation.iterations} iterations of EigenTrust</p>
                 </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Rank</th>
+                        <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">User</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Trust Score</th>
+                        <th className="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">Network Influence</th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {matrixData.computedScores
+                        .sort((a, b) => a.rank - b.rank)
+                        .map((score) => (
+                        <tr key={score.userId} className="hover:bg-gray-50">
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-bold text-gray-900">
+                            #{score.rank}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">
+                            {score.userName}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-mono">
+                            {score.trustScore.toFixed(8)}
+                          </td>
+                          <td className="px-6 py-4 whitespace-nowrap text-sm text-right font-bold text-green-600">
+                            {score.influencePercentage.toFixed(4)}%
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Trust Allocation Matrix */}
+              <div className="bg-white shadow rounded-lg overflow-hidden">
+                <div className="px-6 py-4 border-b">
+                  <h2 className="text-xl font-bold text-gray-900">Trust Allocation Matrix</h2>
+                  <p className="text-gray-600">Matrix showing who allocated trust to whom (rows = givers, columns = receivers)</p>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full divide-y divide-gray-200">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase sticky left-0 bg-gray-50 z-10">
+                          From → To
+                        </th>
+                        {matrixData.allUsers.slice(0, 20).map(user => (
+                          <th
+                            key={user.id}
+                            className="px-2 py-3 text-center text-xs font-medium text-gray-500 uppercase min-w-20"
+                            title={user.name}
+                          >
+                            {user.name.substring(0, 8)}...
+                          </th>
+                        ))}
+                        <th className="px-3 py-3 text-center text-xs font-medium text-gray-500 uppercase bg-blue-50">
+                          + {matrixData.allUsers.length > 20 ? matrixData.allUsers.length - 20 : 0} more
+                        </th>
+                      </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                      {matrixData.allUsers.slice(0, 20).map(giver => {
+                        const giverAllocations = matrixData.trustAllocations.filter(a => a.giverId === giver.id)
+
+                        return (
+                          <tr key={giver.id} className="hover:bg-gray-50">
+                            <td className="px-3 py-4 text-sm font-medium text-gray-900 sticky left-0 bg-white z-10" title={giver.name}>
+                              {giver.name.substring(0, 15)}...
+                            </td>
+                            {matrixData.allUsers.slice(0, 20).map(receiver => {
+                              const allocation = giverAllocations.find(a => a.receiverId === receiver.id)
+                              const value = allocation ? allocation.proportion : 0
+                              const isOwnCell = giver.id === receiver.id
+
+                              return (
+                                <td
+                                  key={receiver.id}
+                                  className={`px-2 py-4 text-xs text-center ${
+                                    isOwnCell
+                                      ? 'bg-gray-100 text-gray-400'
+                                      : value > 0
+                                        ? 'bg-green-50 text-green-700 font-bold'
+                                        : 'text-gray-300'
+                                  }`}
+                                >
+                                  {isOwnCell ? '-' : value > 0 ? (value * 100).toFixed(1) + '%' : '0'}
+                                </td>
+                              )
+                            })}
+                            <td className="px-3 py-4 text-sm text-center text-gray-500">
+                              {giverAllocations.length > 0 ? `${giverAllocations.length} allocs` : ''}
+                            </td>
+                          </tr>
+                        )
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                {matrixData.allUsers.length > 20 && (
+                  <div className="px-6 py-3 bg-gray-50 text-sm text-gray-600">
+                    Showing first 20 users. Total users: {matrixData.allUsers.length}
+                  </div>
+                )}
               </div>
 
               {/* Refresh Button */}
               <div className="mt-6 text-center">
                 <button
                   onClick={fetchTrustMatrix}
-                  className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500"
+                  className="bg-indigo-600 text-white px-6 py-2 rounded-md hover:bg-indigo-700"
                 >
-                  Refresh Matrix
+                  Refresh Data
                 </button>
               </div>
             </>
