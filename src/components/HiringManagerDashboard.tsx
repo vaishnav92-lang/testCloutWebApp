@@ -43,6 +43,7 @@ interface HiringManagerDashboardProps {
 export default function HiringManagerDashboard({ userInfo, isAdmin }: HiringManagerDashboardProps) {
   const [jobs, setJobs] = useState<Job[]>([])
   const [loading, setLoading] = useState(true)
+  const [deletingJobs, setDeletingJobs] = useState<Set<string>>(new Set())
   const router = useRouter()
 
   useEffect(() => {
@@ -88,6 +89,37 @@ export default function HiringManagerDashboard({ userInfo, isAdmin }: HiringMana
         return locationCity || 'In-person'
       default:
         return 'Location TBD'
+    }
+  }
+
+  const handleDeleteJob = async (jobId: string, jobTitle: string) => {
+    if (!confirm(`Are you sure you want to delete "${jobTitle}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeletingJobs(prev => new Set([...prev, jobId]))
+
+    try {
+      const response = await fetch(`/api/hiring-manager/jobs/${jobId}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        // Remove job from local state
+        setJobs(prev => prev.filter(job => job.id !== jobId))
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete job')
+      }
+    } catch (error) {
+      console.error('Error deleting job:', error)
+      alert('Failed to delete job. Please try again.')
+    } finally {
+      setDeletingJobs(prev => {
+        const newSet = new Set(prev)
+        newSet.delete(jobId)
+        return newSet
+      })
     }
   }
 
@@ -201,6 +233,13 @@ export default function HiringManagerDashboard({ userInfo, isAdmin }: HiringMana
                     className="flex-1 px-3 py-2 text-sm bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md transition-colors"
                   >
                     {job.status === 'DRAFT' ? 'Continue Editing' : 'Edit Job'}
+                  </button>
+                  <button
+                    onClick={() => handleDeleteJob(job.id, job.title)}
+                    disabled={deletingJobs.has(job.id)}
+                    className="px-3 py-2 text-sm bg-red-100 hover:bg-red-200 text-red-700 rounded-md transition-colors disabled:opacity-50"
+                  >
+                    {deletingJobs.has(job.id) ? 'Deleting...' : 'Delete'}
                   </button>
                 </div>
               </div>

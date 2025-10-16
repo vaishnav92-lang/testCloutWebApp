@@ -223,3 +223,73 @@ export async function GET(
     }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  try {
+    // AUTHENTICATION CHECK
+    const session = await getServerSession(authOptions)
+
+    if (!session?.user?.email) {
+      return NextResponse.json({
+        error: 'Not authenticated'
+      }, { status: 401 })
+    }
+
+    // FIND CURRENT USER
+    const currentUser = await prisma.user.findUnique({
+      where: { email: session.user.email },
+      select: { id: true, isHiringManager: true }
+    })
+
+    if (!currentUser) {
+      return NextResponse.json({
+        error: 'User not found'
+      }, { status: 404 })
+    }
+
+    // CHECK HIRING MANAGER PERMISSION
+    if (!currentUser.isHiringManager) {
+      return NextResponse.json({
+        error: 'Access denied - hiring manager permissions required'
+      }, { status: 403 })
+    }
+
+    const { id } = await params
+
+    // VERIFY JOB OWNERSHIP
+    const existingJob = await prisma.job.findUnique({
+      where: { id },
+      select: { ownerId: true, title: true }
+    })
+
+    if (!existingJob) {
+      return NextResponse.json({
+        error: 'Job not found'
+      }, { status: 404 })
+    }
+
+    if (existingJob.ownerId !== currentUser.id) {
+      return NextResponse.json({
+        error: 'Access denied - not job owner'
+      }, { status: 403 })
+    }
+
+    // DELETE JOB
+    await prisma.job.delete({
+      where: { id }
+    })
+
+    return NextResponse.json({
+      message: `Job "${existingJob.title}" deleted successfully`
+    })
+
+  } catch (error) {
+    console.error('Job delete error:', error)
+    return NextResponse.json({
+      error: 'Server error'
+    }, { status: 500 })
+  }
+}

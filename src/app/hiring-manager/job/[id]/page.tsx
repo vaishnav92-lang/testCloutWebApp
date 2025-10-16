@@ -41,6 +41,7 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
   const [job, setJob] = useState<Job | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  const [deleting, setDeleting] = useState(false)
   const router = useRouter()
   const { data: session } = useSession()
 
@@ -67,6 +68,33 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
       fetchJob()
     }
   }, [params.id])
+
+  const handleDeleteJob = async () => {
+    if (!job) return
+
+    if (!confirm(`Are you sure you want to delete "${job.title}"? This action cannot be undone.`)) {
+      return
+    }
+
+    setDeleting(true)
+    try {
+      const response = await fetch(`/api/hiring-manager/jobs/${job.id}`, {
+        method: 'DELETE'
+      })
+
+      if (response.ok) {
+        router.push('/dashboard?view=hiring-manager')
+      } else {
+        const data = await response.json()
+        alert(data.error || 'Failed to delete job')
+      }
+    } catch (error) {
+      console.error('Error deleting job:', error)
+      alert('Failed to delete job. Please try again.')
+    } finally {
+      setDeleting(false)
+    }
+  }
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -146,6 +174,13 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                     className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
                   >
                     Edit Job
+                  </button>
+                  <button
+                    onClick={handleDeleteJob}
+                    disabled={deleting}
+                    className="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 disabled:opacity-50"
+                  >
+                    {deleting ? 'Deleting...' : 'Delete Job'}
                   </button>
                 </div>
               </div>
@@ -282,6 +317,13 @@ export default function JobDetailPage({ params }: { params: { id: string } }) {
                   className="px-6 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 font-medium"
                 >
                   Edit Job
+                </button>
+                <button
+                  onClick={handleDeleteJob}
+                  disabled={deleting}
+                  className="px-6 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 font-medium disabled:opacity-50"
+                >
+                  {deleting ? 'Deleting...' : 'Delete Job'}
                 </button>
                 <button
                   onClick={() => router.push('/dashboard')}
