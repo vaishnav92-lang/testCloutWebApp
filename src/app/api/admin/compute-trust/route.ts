@@ -8,7 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { updateUserCloutScores } from '@/lib/eigentrust'
+import { computeEigenTrust } from '@/lib/eigentrust-new'
 
 export async function POST(request: NextRequest) {
   try {
@@ -32,14 +32,19 @@ export async function POST(request: NextRequest) {
     console.log('Starting EigenTrust computation...')
 
     // Run the trust computation
-    const result = await updateUserCloutScores()
+    const result = await computeEigenTrust()
+
+    if (!result.success) {
+      return NextResponse.json({
+        error: result.error || 'Trust computation failed'
+      }, { status: 500 })
+    }
 
     return NextResponse.json({
       message: 'Trust scores computed successfully',
       iterations: result.iterations,
       converged: result.converged,
-      computationTime: result.computationTime,
-      usersUpdated: Object.keys(result.trustScores).length
+      usersUpdated: result.numUsers
     })
 
   } catch (error) {

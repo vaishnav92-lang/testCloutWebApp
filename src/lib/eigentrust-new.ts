@@ -164,11 +164,10 @@ export async function computeEigenTrust(
     const rowSum = C[i].reduce((sum, val) => sum + val, 0)
 
     if (Math.abs(rowSum) < 0.001) {
-      // User hasn't allocated trust yet - default: equal trust to everyone
-      console.log(`User at index ${i} has no allocations, using equal distribution`)
-      for (let j = 0; j < n; j++) {
-        C[i][j] = 1.0 / n
-      }
+      // User hasn't allocated trust yet - default: trust only admin
+      // This preserves admin's signal instead of diluting it
+      console.log(`User at index ${i} has no allocations, defaulting to trust admin only`)
+      C[i][adminIndex] = 1.0
     } else if (Math.abs(rowSum - 1.0) > 0.01) {
       // Row doesn't sum to 1.0, normalize it
       console.log(`User at index ${i} allocations sum to ${rowSum}, normalizing`)
@@ -345,53 +344,20 @@ export async function computeEigenTrust(
 }
 
 /**
- * Initialize equal trust allocations for all users
+ * Initialize clean trust state - clears all allocations
+ * Users with no allocations will default to trusting admin only
+ * This preserves admin's signal instead of diluting it with equal distributions
  */
-export async function initializeEqualTrustAllocations(): Promise<void> {
+export async function initializeCleanTrustState(): Promise<void> {
+  console.log("Initializing clean trust state")
+  console.log("Clearing all trust allocations - users will default to trusting admin")
 
-  // Fetch all users
-  const users = await prisma.user.findMany({
-    select: { id: true }
-  })
+  // Simply clear all allocations
+  // The computation algorithm will default unallocated users to trust admin only
+  await prisma.trustAllocation.deleteMany({})
 
-  const n = users.length
-
-  if (n === 0) {
-    return  // Nothing to initialize
-  }
-
-  const equalProportion = 1.0 / n
-
-  console.log("Initializing equal trust allocations")
-  console.log(`Each user will trust every other user with proportion ${equalProportion}`)
-
-  const allocations = []
-
-  // For every pair of users (including self-loops)
-  for (const giverUser of users) {
-    for (const receiverUser of users) {
-      allocations.push({
-        giverId: giverUser.id,
-        receiverId: receiverUser.id,
-        proportion: equalProportion
-      })
-    }
-  }
-
-  // Save to database using batched operations
-  await prisma.$transaction(async (tx) => {
-    // First, delete all existing allocations
-    await tx.trustAllocation.deleteMany({})
-
-    // Then create all new allocations in batches
-    const batchSize = 100
-    for (let i = 0; i < allocations.length; i += batchSize) {
-      const batch = allocations.slice(i, i + batchSize)
-      await tx.trustAllocation.createMany({
-        data: batch
-      })
-    }
-  })
-
-  console.log(`✓ Initialized ${allocations.length} trust allocations`)
+  console.log("✓ Clean trust state initialized")
+  console.log("📋 Users without allocations will automatically trust admin")
+  console.log("📋 Admin's trust allocations will drive initial rankings")
 }
+

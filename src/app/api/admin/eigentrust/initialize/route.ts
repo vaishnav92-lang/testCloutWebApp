@@ -7,7 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
-import { initializeEqualTrustAllocations, computeEigenTrust } from '@/lib/eigentrust-new'
+import { initializeCleanTrustState, computeEigenTrust } from '@/lib/eigentrust-new'
 
 export async function POST(request: NextRequest) {
   try {
@@ -22,10 +22,10 @@ export async function POST(request: NextRequest) {
 
     console.log('🔄 Setting up EigenTrust system...')
 
-    // Step 1: Initialize equal trust allocations
-    console.log('1️⃣ Initializing equal trust allocations...')
-    await initializeEqualTrustAllocations()
-    console.log('   ✓ Set equal allocations')
+    // Step 1: Initialize clean trust state (users default to trusting admin)
+    console.log('1️⃣ Initializing clean trust state...')
+    await initializeCleanTrustState()
+    console.log('   ✓ Clean state initialized (users default to trusting admin)')
 
     // Step 2: Compute initial trust scores
     console.log('2️⃣ Computing initial trust scores...')
@@ -58,7 +58,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      message: 'Initialized equal trust and computed scores',
+      message: 'Initialized clean trust state and computed scores',
       computation: {
         numUsers: result.numUsers,
         iterations: result.iterations,
