@@ -79,7 +79,7 @@ export default function Dashboard() {
   const [endorsementFormOpen, setEndorsementFormOpen] = useState(false)   // Endorsement form visibility
 
   // DASHBOARD VIEW STATE
-  const [currentView, setCurrentView] = useState<'node' | 'hiring-manager'>('node')  // Toggle between dashboards
+  const [currentView, setCurrentView] = useState<'node' | 'hiring-manager' | 'jobs'>('node')  // Toggle between dashboards
 
   useEffect(() => {
     if (status === 'unauthenticated') {
@@ -263,20 +263,30 @@ export default function Dashboard() {
                 </div>
               </div>
 
-              {/* Dashboard Toggle - Only show if user is a hiring manager */}
-              {session.user.isHiringManager && (
-                <div className="border-b border-gray-200">
-                  <nav className="-mb-px flex space-x-8 px-6">
-                    <button
-                      onClick={() => setCurrentView('node')}
-                      className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                        currentView === 'node'
-                          ? 'border-indigo-500 text-indigo-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      Node Dashboard
-                    </button>
+              {/* Dashboard Toggle */}
+              <div className="border-b border-gray-200">
+                <nav className="-mb-px flex space-x-8 px-6">
+                  <button
+                    onClick={() => setCurrentView('node')}
+                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                      currentView === 'node'
+                        ? 'border-indigo-500 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    onClick={() => setCurrentView('jobs')}
+                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                      currentView === 'jobs'
+                        ? 'border-indigo-500 text-indigo-600'
+                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                    }`}
+                  >
+                    Jobs on Clout
+                  </button>
+                  {session.user.isHiringManager && (
                     <button
                       onClick={() => setCurrentView('hiring-manager')}
                       className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
@@ -285,11 +295,11 @@ export default function Dashboard() {
                           : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
                       }`}
                     >
-                      Hiring Manager Dashboard
+                      Hiring Manager
                     </button>
-                  </nav>
-                </div>
-              )}
+                  )}
+                </nav>
+              </div>
             </div>
 
             <div className="p-6">
@@ -316,7 +326,12 @@ export default function Dashboard() {
               {/* Conditional Dashboard Content */}
               {currentView === 'node' ? (
                 <>
-                  {/* Trust Network Manager - New unified interface (moved to top) */}
+                  {/* Clout Journey Section - Moved to top */}
+                  <div className="mb-8">
+                    <CloutJourneyCard />
+                  </div>
+
+                  {/* Trust Network Manager - New unified interface */}
                   <div className="mb-8">
                     <TrustNetworkManager onRefresh={() => {
                       fetchRelationships()
@@ -327,20 +342,10 @@ export default function Dashboard() {
                   {/* Received Endorsements Notifications */}
                   <EndorsementNotifications className="mb-8" />
 
-                  {/* Clout & Earnings Card */}
-                  <div className="mb-8">
-                    <EarningsCloutCard />
-                  </div>
-
                   {/* Pending Network Requests - Show at top if any exist */}
                   <div className="mb-8">
                     <PendingNetworkRequests />
                   </div>
-
-              {/* Clout Journey Section */}
-              <div className="mb-8">
-                <CloutJourneyCard />
-              </div>
 
               {/* Endorsement Section */}
               <div className="mb-8">
@@ -450,86 +455,87 @@ export default function Dashboard() {
                 )}
               </div>
 
-              {/* Jobs Section */}
-              <div className="border-t border-gray-200 pt-6">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Available Jobs</h2>
-                  <span className="text-sm text-gray-500">{jobs.length} jobs available</span>
-                </div>
-
-                {loading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500">Loading jobs...</div>
-                  </div>
-                ) : !Array.isArray(jobs) || jobs.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500">No jobs available at the moment.</div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                    {jobs.map((job) => (
-                      <div
-                        key={job.id}
-                        onClick={() => router.push(`/jobs/${job.id}`)}
-                        className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
-                      >
-                        <div className="flex items-start justify-between mb-4">
-                          <div className="flex-1">
-                            <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.title}</h3>
-                            <p className="text-sm font-medium text-indigo-600">{job.company.name}</p>
-                            <p className="text-xs text-gray-500">{job.company.industry}</p>
-                          </div>
-                        </div>
-
-                        <div className="space-y-2 mb-4">
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="font-medium">📍</span>
-                            <span className="ml-2">{job.remote ? 'Remote' : job.location}</span>
-                          </div>
-
-                          {job.salaryMin && job.salaryMax && (
-                            <div className="flex items-center text-sm text-gray-600">
-                              <span className="font-medium">💰</span>
-                              <span className="ml-2">
-                                ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}
-                              </span>
-                            </div>
-                          )}
-
-                          <div className="flex items-center text-sm text-gray-600">
-                            <span className="font-medium">👥</span>
-                            <span className="ml-2">{job._count.applications} applications</span>
-                          </div>
-                        </div>
-
-                        <p className="text-sm text-gray-600 mb-4 line-clamp-3">{job.description}</p>
-
-                        <div className="flex flex-wrap gap-1 mb-4">
-                          {job.requirements.slice(0, 2).map((req, idx) => (
-                            <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                              {req}
-                            </span>
-                          ))}
-                          {job.requirements.length > 2 && (
-                            <span className="text-xs text-gray-500">+{job.requirements.length - 2} more</span>
-                          )}
-                        </div>
-
-                        <button
-                          className="w-full px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
-                          onClick={(e) => {
-                            e.stopPropagation() // Prevent card click from triggering
-                            router.push(`/jobs/${job.id}`)
-                          }}
-                        >
-                          View Details
-                        </button>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
                 </>
+              ) : currentView === 'jobs' ? (
+                /* Jobs Dashboard */
+                <div className="border-t border-gray-200 pt-6">
+                  <div className="flex items-center justify-between mb-6">
+                    <h2 className="text-2xl font-bold text-gray-900">Available Jobs</h2>
+                    <span className="text-sm text-gray-500">{jobs.length} jobs available</span>
+                  </div>
+
+                  {loading ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-500">Loading jobs...</div>
+                    </div>
+                  ) : !Array.isArray(jobs) || jobs.length === 0 ? (
+                    <div className="text-center py-8">
+                      <div className="text-gray-500">No jobs available at the moment.</div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {jobs.map((job) => (
+                        <div
+                          key={job.id}
+                          onClick={() => router.push(`/jobs/${job.id}`)}
+                          className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+                        >
+                          <div className="flex items-start justify-between mb-4">
+                            <div className="flex-1">
+                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.title}</h3>
+                              <p className="text-sm font-medium text-indigo-600">{job.company.name}</p>
+                              <p className="text-xs text-gray-500">{job.company.industry}</p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-2 mb-4">
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="font-medium">📍</span>
+                              <span className="ml-2">{job.remote ? 'Remote' : job.location}</span>
+                            </div>
+
+                            {job.salaryMin && job.salaryMax && (
+                              <div className="flex items-center text-sm text-gray-600">
+                                <span className="font-medium">💰</span>
+                                <span className="ml-2">
+                                  ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}
+                                </span>
+                              </div>
+                            )}
+
+                            <div className="flex items-center text-sm text-gray-600">
+                              <span className="font-medium">👥</span>
+                              <span className="ml-2">{job._count.applications} applications</span>
+                            </div>
+                          </div>
+
+                          <p className="text-sm text-gray-600 mb-4 line-clamp-3">{job.description}</p>
+
+                          <div className="flex flex-wrap gap-1 mb-4">
+                            {job.requirements.slice(0, 2).map((req, idx) => (
+                              <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
+                                {req}
+                              </span>
+                            ))}
+                            {job.requirements.length > 2 && (
+                              <span className="text-xs text-gray-500">+{job.requirements.length - 2} more</span>
+                            )}
+                          </div>
+
+                          <button
+                            className="w-full px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
+                            onClick={(e) => {
+                              e.stopPropagation() // Prevent card click from triggering
+                              router.push(`/jobs/${job.id}`)
+                            }}
+                          >
+                            View Details
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </div>
               ) : (
                 /* Hiring Manager Dashboard */
                 <HiringManagerDashboard
@@ -548,16 +554,16 @@ export default function Dashboard() {
 
       {/* Endorsement Form - Only show for node dashboard */}
       {currentView === 'node' && (
-      <EndorsementForm
-        isOpen={endorsementFormOpen}
-        onClose={() => setEndorsementFormOpen(false)}
-        onSuccess={() => fetchEndorsements()}
-        userInfo={{
-          firstName: session.user.firstName || '',
-          lastName: session.user.lastName || '',
-          email: session.user.email
-        }}
-      />
+        <EndorsementForm
+          isOpen={endorsementFormOpen}
+          onClose={() => setEndorsementFormOpen(false)}
+          onSuccess={() => fetchEndorsements()}
+          userInfo={{
+            firstName: session.user.firstName || '',
+            lastName: session.user.lastName || '',
+            email: session.user.email
+          }}
+        />
       )}
     </div>
   )
