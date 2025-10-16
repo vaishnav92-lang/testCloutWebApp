@@ -131,6 +131,21 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
     }
   }
 
+  const handleDelegateContactSelect = (contactId: string) => {
+    const contact = trustedContacts.find(c => c.id === contactId)
+    if (contact) {
+      const displayName = contact.firstName && contact.lastName
+        ? `${contact.firstName} ${contact.lastName}`
+        : contact.firstName || contact.lastName || contact.email
+
+      setDelegateForm(prev => ({
+        ...prev,
+        delegateName: displayName,
+        delegateEmail: contact.email
+      }))
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setSubmitting(true)
@@ -576,6 +591,35 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                       Send this job opportunity to someone who might know good candidates
                     </p>
                   </div>
+
+                  {/* Quick Select from Trusted Contacts for Delegation */}
+                  {trustedContacts.length > 0 && (
+                    <div className="bg-purple-50 border border-purple-200 rounded-lg p-4">
+                      <label className="block text-sm font-medium text-purple-900 mb-2">
+                        Quick select from your trusted network (optional)
+                      </label>
+                      <select
+                        onChange={(e) => handleDelegateContactSelect(e.target.value)}
+                        className="w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 bg-white"
+                        defaultValue=""
+                      >
+                        <option value="">Select a trusted contact...</option>
+                        {trustedContacts.map((contact) => {
+                          const displayName = contact.firstName && contact.lastName
+                            ? `${contact.firstName} ${contact.lastName}`
+                            : contact.firstName || contact.lastName || contact.email
+                          return (
+                            <option key={contact.id} value={contact.id}>
+                              {displayName} ({contact.email})
+                            </option>
+                          )
+                        })}
+                      </select>
+                      <p className="text-xs text-purple-700 mt-1">
+                        Selecting someone will auto-fill their name and email below
+                      </p>
+                    </div>
+                  )}
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
