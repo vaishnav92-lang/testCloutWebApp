@@ -153,13 +153,21 @@ export default function AdminTrustAllocationsPage() {
 
   const triggerComputation = async () => {
     try {
+      console.log('🔄 Button clicked - starting computation...')
       setMessage('🔄 Triggering EigenTrust computation...')
+      setError('') // Clear any previous errors
 
+      console.log('📡 Making fetch request to /api/admin/eigentrust/compute')
       const response = await fetch('/api/admin/eigentrust/compute', {
-        method: 'POST'
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
       })
 
+      console.log('📡 Response received, status:', response.status)
       const data = await response.json()
+      console.log('📡 Response data:', data)
 
       if (!response.ok) {
         throw new Error(data.error || 'Failed to trigger computation')
@@ -167,10 +175,14 @@ export default function AdminTrustAllocationsPage() {
 
       setMessage(`✅ Computation complete! ${data.iterations} iterations, converged: ${data.converged}`)
 
-      setTimeout(() => setMessage(''), 3000)
+      // Refresh the page data to show updated scores
+      setTimeout(() => {
+        setMessage('')
+        fetchData() // Refresh the trust allocations data
+      }, 3000)
 
     } catch (error) {
-      console.error('Failed to trigger computation:', error)
+      console.error('❌ Failed to trigger computation:', error)
       setError(error instanceof Error ? error.message : 'Failed to trigger computation')
     }
   }
