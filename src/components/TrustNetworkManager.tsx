@@ -265,7 +265,7 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
           )}
           {remainingTrust > 0 && (
             <p className="text-sm text-gray-600 mt-1">
-              💡 {remainingTrust} points remaining (automatically allocated to admin for EigenTrust)
+              💡 {remainingTrust} points remaining 
             </p>
           )}
         </div>
