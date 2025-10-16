@@ -102,11 +102,15 @@ export async function GET(request: NextRequest) {
       }
     })
 
+    // Remove invitations that already have a relationship record (to avoid duplicates)
+    const relationshipEmails = new Set(connections.map(conn => conn.connectedUser.email))
+    const filteredInvitations = pendingInvitations.filter(inv => !relationshipEmails.has(inv.email))
+
     return NextResponse.json({
       relationships: connections,
       connections,
       counts,
-      pendingInvitations
+      pendingInvitations: filteredInvitations
     })
 
   } catch (error) {
