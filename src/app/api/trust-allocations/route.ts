@@ -44,20 +44,22 @@ export async function POST(request: NextRequest) {
     }
 
     // =========================================================================
-    // VALIDATION: Allocations must sum to 1.0
+    // BASIC VALIDATION: Just validate format, no sum constraint
     // =========================================================================
 
-    const totalSum = allocations.reduce((sum, allocation) => {
+    // Validate allocation format
+    for (const allocation of allocations) {
       if (typeof allocation.proportion !== 'number' || !allocation.receiverId) {
-        throw new Error('Invalid allocation format')
+        return NextResponse.json({
+          error: 'Invalid allocation format'
+        }, { status: 400 })
       }
-      return sum + allocation.proportion
-    }, 0)
 
-    if (Math.abs(totalSum - 1.0) > 0.01) {
-      return NextResponse.json({
-        error: `Allocations must sum to 1.0, got ${totalSum}`
-      }, { status: 400 })
+      if (allocation.proportion < 0 || allocation.proportion > 1) {
+        return NextResponse.json({
+          error: 'Allocation proportions must be between 0 and 1'
+        }, { status: 400 })
+      }
     }
 
     // =========================================================================
