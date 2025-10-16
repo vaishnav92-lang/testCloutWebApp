@@ -19,7 +19,7 @@ function OnboardContent() {
     phone: '',
     location: '',
     linkedinUrl: '',
-    userIntent: 'ACTIVELY_LOOKING'
+    userIntent: ['ACTIVELY_LOOKING'] // Changed to array for multiple selections
   })
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
@@ -48,7 +48,7 @@ function OnboardContent() {
           phone: userData.phone || '',
           location: userData.location || '',
           linkedinUrl: userData.linkedinUrl || '',
-          userIntent: userData.userIntent || 'ACTIVELY_LOOKING'
+          userIntent: Array.isArray(userData.userIntent) ? userData.userIntent : (userData.userIntent ? [userData.userIntent] : ['ACTIVELY_LOOKING'])
         })
       }
     } catch (error) {
@@ -308,54 +308,120 @@ function OnboardContent() {
 
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-3">
-                What best describes your intentions? *
+                What brings you to Clout? (Select all that apply) *
               </label>
               <div className="space-y-3">
                 <div className="flex items-start">
                   <input
-                    id="recommend-only"
-                    name="userIntent"
-                    type="radio"
-                    value="RECOMMEND_ONLY"
-                    checked={formData.userIntent === 'RECOMMEND_ONLY'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, userIntent: e.target.value }))}
-                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    id="hire-talent"
+                    type="checkbox"
+                    checked={formData.userIntent.includes('HIRE_TALENT')}
+                    onChange={(e) => {
+                      const value = 'HIRE_TALENT'
+                      setFormData(prev => ({
+                        ...prev,
+                        userIntent: e.target.checked
+                          ? [...prev.userIntent, value]
+                          : prev.userIntent.filter(intent => intent !== value)
+                      }))
+                    }}
+                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                   />
                   <div>
-                    <label htmlFor="recommend-only" className="text-sm font-medium text-gray-900 cursor-pointer">
-                      I'm here only to recommend great talent
+                    <label htmlFor="hire-talent" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      I'm here to hire talent
                     </label>
-                    <p className="text-xs text-gray-500">Connect talented people with opportunities</p>
+                    <p className="text-xs text-gray-500">Looking to find and recruit great people for my team or company</p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
                   <input
-                    id="hybrid"
-                    name="userIntent"
-                    type="radio"
-                    value="HYBRID"
-                    checked={formData.userIntent === 'HYBRID'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, userIntent: e.target.value }))}
-                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    id="refer-talent"
+                    type="checkbox"
+                    checked={formData.userIntent.includes('REFER_TALENT')}
+                    onChange={(e) => {
+                      const value = 'REFER_TALENT'
+                      setFormData(prev => ({
+                        ...prev,
+                        userIntent: e.target.checked
+                          ? [...prev.userIntent, value]
+                          : prev.userIntent.filter(intent => intent !== value)
+                      }))
+                    }}
+                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                   />
                   <div>
-                    <label htmlFor="hybrid" className="text-sm font-medium text-gray-900 cursor-pointer">
-                      I'm here primarily to recommend talent and opportunistically consider roles for myself
+                    <label htmlFor="refer-talent" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      I'm here to refer great talent
                     </label>
-                    <p className="text-xs text-gray-500">Refer others while staying open to new opportunities</p>
+                    <p className="text-xs text-gray-500">Connect talented people with opportunities and earn referral rewards</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <input
+                    id="connect-people"
+                    type="checkbox"
+                    checked={formData.userIntent.includes('CONNECT_PEOPLE')}
+                    onChange={(e) => {
+                      const value = 'CONNECT_PEOPLE'
+                      setFormData(prev => ({
+                        ...prev,
+                        userIntent: e.target.checked
+                          ? [...prev.userIntent, value]
+                          : prev.userIntent.filter(intent => intent !== value)
+                      }))
+                    }}
+                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <div>
+                    <label htmlFor="connect-people" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      I'm here to connect people with each other
+                    </label>
+                    <p className="text-xs text-gray-500">Make valuable introductions and build professional networks</p>
+                  </div>
+                </div>
+
+                <div className="flex items-start">
+                  <input
+                    id="meet-people"
+                    type="checkbox"
+                    checked={formData.userIntent.includes('MEET_PEOPLE')}
+                    onChange={(e) => {
+                      const value = 'MEET_PEOPLE'
+                      setFormData(prev => ({
+                        ...prev,
+                        userIntent: e.target.checked
+                          ? [...prev.userIntent, value]
+                          : prev.userIntent.filter(intent => intent !== value)
+                      }))
+                    }}
+                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
+                  />
+                  <div>
+                    <label htmlFor="meet-people" className="text-sm font-medium text-gray-900 cursor-pointer">
+                      I'm here to meet talented and interesting people
+                    </label>
+                    <p className="text-xs text-gray-500">Expand my network and connect with like-minded professionals</p>
                   </div>
                 </div>
 
                 <div className="flex items-start">
                   <input
                     id="actively-looking"
-                    name="userIntent"
-                    type="radio"
-                    value="ACTIVELY_LOOKING"
-                    checked={formData.userIntent === 'ACTIVELY_LOOKING'}
-                    onChange={(e) => setFormData(prev => ({ ...prev, userIntent: e.target.value }))}
-                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300"
+                    type="checkbox"
+                    checked={formData.userIntent.includes('ACTIVELY_LOOKING')}
+                    onChange={(e) => {
+                      const value = 'ACTIVELY_LOOKING'
+                      setFormData(prev => ({
+                        ...prev,
+                        userIntent: e.target.checked
+                          ? [...prev.userIntent, value]
+                          : prev.userIntent.filter(intent => intent !== value)
+                      }))
+                    }}
+                    className="mt-1 mr-3 h-4 w-4 text-indigo-600 focus:ring-indigo-500 border-gray-300 rounded"
                   />
                   <div>
                     <label htmlFor="actively-looking" className="text-sm font-medium text-gray-900 cursor-pointer">
