@@ -31,12 +31,6 @@ export async function POST(request: NextRequest) {
       }, { status: 401 })
     }
 
-    // Block admin from using regular relationship establishment
-    if (session.user.email === 'vaishnav@cloutcareers.com') {
-      return NextResponse.json({
-        error: 'Admin must use the admin dashboard for trust allocation'
-      }, { status: 403 })
-    }
 
     // INPUT VALIDATION
     // Extract and validate required fields from request
