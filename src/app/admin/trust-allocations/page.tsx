@@ -83,13 +83,22 @@ export default function AdminTrustAllocationsPage() {
   }
 
   const updateAllocation = (receiverId: string, proportion: number) => {
-    setAllocations(prev =>
-      prev.map(a =>
-        a.receiverId === receiverId
-          ? { ...a, proportion: Math.max(0, Math.min(1, proportion)) }
-          : a
-      )
-    )
+    setAllocations(prev => {
+      const existingIndex = prev.findIndex(a => a.receiverId === receiverId)
+      const clampedProportion = Math.max(0, Math.min(1, proportion))
+
+      if (existingIndex >= 0) {
+        // Update existing allocation
+        return prev.map(a =>
+          a.receiverId === receiverId
+            ? { ...a, proportion: clampedProportion }
+            : a
+        )
+      } else {
+        // Add new allocation for user who didn't have one
+        return [...prev, { receiverId, proportion: clampedProportion }]
+      }
+    })
   }
 
   const totalAllocation = allocations.reduce((sum, a) => sum + a.proportion, 0)
@@ -299,9 +308,9 @@ export default function AdminTrustAllocationsPage() {
             </h3>
 
             <div className="space-y-4 max-h-96 overflow-y-auto">
-              {allocations.map((allocation) => {
-                const user = users.find(u => u.id === allocation.receiverId)
-                if (!user) return null
+              {users.map((user) => {
+                const allocation = allocations.find(a => a.receiverId === user.id)
+                const proportion = allocation?.proportion || 0
 
                 return (
                   <div key={user.id} className="flex items-center justify-between p-3 border rounded-md">
@@ -315,7 +324,7 @@ export default function AdminTrustAllocationsPage() {
                         min="0"
                         max="1"
                         step="0.001"
-                        value={allocation.proportion}
+                        value={proportion}
                         onChange={(e) => updateAllocation(user.id, parseFloat(e.target.value))}
                         className="w-32"
                       />
@@ -325,7 +334,7 @@ export default function AdminTrustAllocationsPage() {
                         min="0"
                         max="100"
                         step="0.1"
-                        value={(allocation.proportion * 100).toFixed(1)}
+                        value={(proportion * 100).toFixed(1)}
                         onChange={(e) => updateAllocation(user.id, parseFloat(e.target.value) / 100)}
                         className="w-16 px-2 py-1 border border-gray-300 rounded text-center text-sm"
                       />
