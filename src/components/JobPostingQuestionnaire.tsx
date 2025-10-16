@@ -94,7 +94,55 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
+  const [isLoadingJob, setIsLoadingJob] = useState(!!jobId) // Loading existing job data
   const router = useRouter()
+
+  // Load existing job data when editing
+  useEffect(() => {
+    if (jobId) {
+      const loadJobData = async () => {
+        try {
+          const response = await fetch(`/api/hiring-manager/jobs/${jobId}`)
+          if (response.ok) {
+            const data = await response.json()
+            const job = data.job
+
+            // Map job data to form data structure
+            setFormData({
+              title: job.title || '',
+              locationType: job.locationType || 'REMOTE',
+              locationCity: job.locationCity || '',
+              salaryMin: job.salaryMin || '',
+              salaryMax: job.salaryMax || '',
+              currency: job.currency || 'USD',
+              equityOffered: job.equityOffered || false,
+              equityRange: job.equityRange || '',
+              dayToDayDescription: job.dayToDayDescription || '',
+              archetypes: job.archetypes || '',
+              nonWorkSignals: job.nonWorkSignals || '',
+              flexibleRequirements: job.flexibleRequirements || [],
+              flexibleReasons: job.flexibleReasons || {},
+              commonMismatches: job.commonMismatches || '',
+              roleChallenges: job.roleChallenges || '',
+              workingStyle: job.workingStyle || '',
+              excitingWork: job.excitingWork || '',
+              specialOpportunity: job.specialOpportunity || '',
+              growthPath: job.growthPath || '',
+              mustHaves: job.mustHaves || '',
+              referralBudget: job.referralBudget || '',
+              referralPreference: job.referralPreference || 'MANUAL_SCREEN'
+            })
+          }
+        } catch (error) {
+          console.error('Error loading job data:', error)
+        } finally {
+          setIsLoadingJob(false)
+        }
+      }
+
+      loadJobData()
+    }
+  }, [jobId])
 
   const sections = [
     'Introduction',
@@ -1013,6 +1061,17 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
           </div>
         )
     }
+  }
+
+  // Show loading screen while fetching existing job data
+  if (isLoadingJob) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-lg text-gray-600">Loading job data...</div>
+        </div>
+      </div>
+    )
   }
 
   return (

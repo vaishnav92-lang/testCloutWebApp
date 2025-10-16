@@ -38,8 +38,9 @@ export default function NetworkConnectionsCard() {
   const [loading, setLoading] = useState(true)
   const [selectedIntro, setSelectedIntro] = useState<Introduction | null>(null)
   const [showModal, setShowModal] = useState(false)
-  const [modalMode, setModalMode] = useState<'establish' | 'notes'>('establish')
+  const [modalMode, setModalMode] = useState<'establish' | 'notes' | 'trust'>('establish')
   const [notes, setNotes] = useState('')
+  const [trustAllocation, setTrustAllocation] = useState(10)
   const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
@@ -74,6 +75,13 @@ export default function NetworkConnectionsCard() {
     setShowModal(true)
   }
 
+  const handleAddToTrustedNetwork = (intro: Introduction) => {
+    setSelectedIntro(intro)
+    setTrustAllocation(10)
+    setModalMode('trust')
+    setShowModal(true)
+  }
+
   const handleDeclineConnection = async (intro: Introduction) => {
     if (confirm('Are you sure you want to decline this connection?')) {
       try {
@@ -97,28 +105,51 @@ export default function NetworkConnectionsCard() {
 
     setSubmitting(true)
     try {
-      const body: any = {}
+      if (modalMode === 'trust') {
+        // Add to trusted network with trust allocation
+        const response = await fetch('/api/relationships/establish', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            email: selectedIntro.otherPerson.email,
+            trustAllocation: trustAllocation
+          })
+        })
 
-      if (modalMode === 'establish') {
-        body.status = 'ESTABLISHED'
-        if (notes.trim()) {
-          body.notes = notes
+        if (response.ok) {
+          setShowModal(false)
+          setSelectedIntro(null)
+          setTrustAllocation(10)
+          // Optionally refresh data or show success message
+        } else {
+          const error = await response.json()
+          alert(error.error || 'Failed to add to trusted network')
         }
       } else {
-        body.notes = notes
-      }
+        // Handle introduction status updates and notes
+        const body: any = {}
 
-      const response = await fetch(`/api/introductions/${selectedIntro.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(body)
-      })
+        if (modalMode === 'establish') {
+          body.status = 'ESTABLISHED'
+          if (notes.trim()) {
+            body.notes = notes
+          }
+        } else {
+          body.notes = notes
+        }
 
-      if (response.ok) {
-        await fetchIntroductions()
-        setShowModal(false)
-        setSelectedIntro(null)
-        setNotes('')
+        const response = await fetch(`/api/introductions/${selectedIntro.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        })
+
+        if (response.ok) {
+          await fetchIntroductions()
+          setShowModal(false)
+          setSelectedIntro(null)
+          setNotes('')
+        }
       }
     } catch (error) {
       console.error('Error updating introduction:', error)
@@ -277,12 +308,20 @@ export default function NetworkConnectionsCard() {
                       )}
 
                       {intro.status === 'ESTABLISHED' && (
-                        <button
-                          onClick={() => handleUpdateNotes(intro)}
-                          className="px-3 py-1 text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors"
-                        >
-                          {intro.notes ? 'Update Notes' : 'Add Notes'}
-                        </button>
+                        <>
+                          <button
+                            onClick={() => handleAddToTrustedNetwork(intro)}
+                            className="px-3 py-1 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition-colors"
+                          >
+                            Add to Trusted Network
+                          </button>
+                          <button
+                            onClick={() => handleUpdateNotes(intro)}
+                            className="px-3 py-1 text-blue-600 text-sm font-medium hover:text-blue-700 transition-colors"
+                          >
+                            {intro.notes ? 'Update Notes' : 'Add Notes'}
+                          </button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -313,28 +352,50 @@ export default function NetworkConnectionsCard() {
             <h3 className="text-lg font-semibold text-gray-900 mb-4">
               {modalMode === 'establish'
                 ? `Add ${getPersonName(selectedIntro.otherPerson)} to Trusted Network`
+                : modalMode === 'trust'
+                ? `Add ${getPersonName(selectedIntro.otherPerson)} to Trusted Network`
                 : `Update notes for ${getPersonName(selectedIntro.otherPerson)}`
               }
             </h3>
 
-            <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                {modalMode === 'establish'
-                  ? 'How has this connection been valuable? (optional)'
-                  : 'Your notes about this connection'
-                }
-              </label>
-              <textarea
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                rows={4}
-                placeholder={modalMode === 'establish'
-                  ? "e.g., 'We're now collaborating on X project'"
-                  : 'Add any notes about this connection...'
-                }
-              />
-            </div>
+            {modalMode === 'trust' ? (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  Trust Points to Allocate (0-100)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={trustAllocation}
+                  onChange={(e) => setTrustAllocation(parseInt(e.target.value) || 0)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  placeholder="10"
+                />
+                <p className="text-sm text-gray-500 mt-1">
+                  This will add them to your trusted network and allocate trust points for the EigenTrust algorithm.
+                </p>
+              </div>
+            ) : (
+              <div className="mb-4">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  {modalMode === 'establish'
+                    ? 'How has this connection been valuable? (optional)'
+                    : 'Your notes about this connection'
+                  }
+                </label>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
+                  rows={4}
+                  placeholder={modalMode === 'establish'
+                    ? "e.g., 'We're now collaborating on X project'"
+                    : 'Add any notes about this connection...'
+                  }
+                />
+              </div>
+            )}
 
             <div className="flex justify-end gap-3">
               <button
@@ -342,6 +403,7 @@ export default function NetworkConnectionsCard() {
                   setShowModal(false)
                   setSelectedIntro(null)
                   setNotes('')
+                  setTrustAllocation(10)
                 }}
                 className="px-4 py-2 text-gray-600 hover:text-gray-800 transition-colors"
                 disabled={submitting}
@@ -353,7 +415,10 @@ export default function NetworkConnectionsCard() {
                 className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors disabled:opacity-50"
                 disabled={submitting}
               >
-                {submitting ? 'Saving...' : modalMode === 'establish' ? 'Add to Trusted Network' : 'Save Notes'}
+                {submitting ? 'Saving...' :
+                 modalMode === 'establish' ? 'Add to Trusted Network' :
+                 modalMode === 'trust' ? 'Add to Trusted Network' :
+                 'Save Notes'}
               </button>
             </div>
           </div>
