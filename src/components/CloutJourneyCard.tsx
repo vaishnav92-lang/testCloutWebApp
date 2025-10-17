@@ -39,7 +39,7 @@ export default function CloutJourneyCard() {
   const [addingToNetwork, setAddingToNetwork] = useState<string | null>(null)
   const [showTrustModal, setShowTrustModal] = useState(false)
   const [selectedUser, setSelectedUser] = useState<ReferralUser | null>(null)
-  const [trustScore, setTrustScore] = useState(8)
+  const [trustPoints, setTrustPoints] = useState(80)
 
   useEffect(() => {
     const fetchJourneyData = async () => {
@@ -79,7 +79,7 @@ export default function CloutJourneyCard() {
 
   const handleAddToTrustedNetwork = (user: ReferralUser) => {
     setSelectedUser(user)
-    setTrustScore(8) // Default trust score
+    setTrustPoints(80) // Default trust points (0-100 scale)
     setShowTrustModal(true)
   }
 
@@ -90,12 +90,25 @@ export default function CloutJourneyCard() {
     setShowTrustModal(false)
 
     try {
-      const response = await fetch('/api/user/relationships', {
+      // First create the relationship if it doesn't exist
+      await fetch('/api/user/relationships', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           otherUserId: selectedUser.id,
-          trustScore
+          trustScore: 5 // Default for relationship creation
+        })
+      })
+
+      // Then set the trust allocation using the new system
+      const response = await fetch('/api/trust-allocations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          allocations: [{
+            receiverId: selectedUser.id,
+            proportion: trustPoints / 100 // Convert to 0-1 scale
+          }]
         })
       })
 
@@ -347,22 +360,22 @@ export default function CloutJourneyCard() {
 
             <div className="mb-6">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                How much do you trust {getUserName(selectedUser)}? ({trustScore}/10)
+                Trust Points for {getUserName(selectedUser)}: {trustPoints}
               </label>
               <input
                 type="range"
-                min="1"
-                max="10"
-                value={trustScore}
-                onChange={(e) => setTrustScore(parseInt(e.target.value))}
+                min="0"
+                max="100"
+                value={trustPoints}
+                onChange={(e) => setTrustPoints(parseInt(e.target.value))}
                 className="w-full h-2 bg-gray-200 rounded-lg appearance-none cursor-pointer"
               />
               <div className="flex justify-between text-xs text-gray-500 mt-1">
-                <span>1 (Low Trust)</span>
-                <span>10 (High Trust)</span>
+                <span>0 (No Trust)</span>
+                <span>100 (Full Trust)</span>
               </div>
               <p className="text-xs text-gray-500 mt-2">
-                This score is private and helps improve network recommendations
+                Allocate trust points (0-100) to build your network
               </p>
               {selectedUser.email && (
                 <p className="text-xs text-gray-400 mt-1">
