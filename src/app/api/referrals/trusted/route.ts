@@ -59,6 +59,8 @@ export async function POST(request: NextRequest) {
     }
 
     // VERIFY CONTACT EXISTS AND IS IN TRUSTED NETWORK
+    console.log('Looking for relationship with contactId:', contactId, 'and currentUserId:', currentUser.id)
+
     const relationship = await prisma.relationship.findFirst({
       where: {
         OR: [
@@ -74,12 +76,14 @@ export async function POST(request: NextRequest) {
     })
 
     if (!relationship) {
+      console.log('No confirmed relationship found between', currentUser.id, 'and', contactId)
       return NextResponse.json({
         error: 'Contact not found in your trusted network'
       }, { status: 400 })
     }
 
     const referredUser = relationship.user1Id === currentUser.id ? relationship.user2 : relationship.user1
+    console.log('Found referred user:', referredUser.id, referredUser.email)
 
     // CREATE REFERRAL RECORD AS AN ENDORSEMENT WITH JOB CONTEXT
 
@@ -110,7 +114,7 @@ export async function POST(request: NextRequest) {
         recommendation: referralReason,
         // Store additional message if provided
         endorsementContent: message || `Referred for ${job.title} position at ${job.company.name}`,
-        status: 'PENDING',
+        status: 'PENDING_CANDIDATE_ACTION',
         createdAt: new Date()
       }
     })
@@ -126,9 +130,14 @@ export async function POST(request: NextRequest) {
     })
 
   } catch (error) {
-    console.error('Trusted referral error:', error)
+    console.error('Trusted referral error - Full details:', error)
+    console.error('Error message:', error instanceof Error ? error.message : 'Unknown error')
+    if (error instanceof Error && 'code' in error) {
+      console.error('Prisma error code:', (error as any).code)
+    }
     return NextResponse.json({
-      error: 'Server error'
+      error: 'Server error',
+      details: error instanceof Error ? error.message : 'Unknown error'
     }, { status: 500 })
   }
 }
