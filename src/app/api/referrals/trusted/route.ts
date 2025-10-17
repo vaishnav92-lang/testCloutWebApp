@@ -83,18 +83,17 @@ export async function POST(request: NextRequest) {
 
     // CREATE REFERRAL RECORD AS AN ENDORSEMENT WITH JOB CONTEXT
 
-    // CHECK IF ALREADY REFERRED
+    // CHECK IF ALREADY ENDORSED (global check due to unique constraint)
     const existingEndorsement = await prisma.endorsement.findFirst({
       where: {
         endorserId: currentUser.id,
-        endorsedUserId: referredUser.id,
-        jobId: jobId
+        endorsedUserEmail: referredUser.email
       }
     })
 
     if (existingEndorsement) {
       return NextResponse.json({
-        error: 'You have already referred this person for this job'
+        error: 'You have already endorsed this person. You can only endorse someone once.'
       }, { status: 400 })
     }
 
