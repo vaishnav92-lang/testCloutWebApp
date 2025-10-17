@@ -35,7 +35,15 @@ export async function POST(request: NextRequest) {
 
     // PARSE REQUEST BODY
     const body = await request.json()
-    const { jobId, candidateEmail, candidateName, message, referralReason } = body
+    const {
+      jobId,
+      candidateEmail,
+      candidateName,
+      message,
+      referralReason,
+      existingUserId,
+      addedToNetwork
+    } = body
 
     if (!jobId || !candidateEmail || !candidateName || !referralReason) {
       return NextResponse.json({
@@ -58,15 +66,48 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // CHECK IF USER ALREADY EXISTS
-    const existingUser = await prisma.user.findUnique({
-      where: { email: candidateEmail }
-    })
+    // CHECK IF USER ALREADY EXISTS (if not provided in request)
+    let candidateUserId = existingUserId
+    if (!candidateUserId) {
+      const existingUser = await prisma.user.findUnique({
+        where: { email: candidateEmail }
+      })
 
-    if (existingUser) {
+      if (existingUser) {
+        // User exists but wasn't detected on frontend
+        candidateUserId = existingUser.id
+      }
+    }
+
+    // If user exists in the system, create a proper job referral endorsement
+    if (candidateUserId) {
+      // Create endorsement for existing user (with job context)
+      const endorsement = await prisma.endorsement.create({
+        data: {
+          endorserId: currentUser.id,
+          endorsedUserId: candidateUserId,
+          endorsedUserEmail: candidateEmail,
+          jobId,
+          // Use referralReason as the recommendation
+          recommendation: referralReason,
+          // Store additional message if provided
+          endorsementContent: message || `Referred for ${job.title} position`,
+          status: 'PENDING',
+          createdAt: new Date()
+        }
+      })
+
+      // Log if they were added to network
+      if (addedToNetwork) {
+        console.log(`User ${candidateEmail} was added to ${currentUser.email}'s network during referral`)
+      }
+
       return NextResponse.json({
-        error: 'This person is already on Clout. Please use the trusted network referral option.'
-      }, { status: 400 })
+        message: 'Referral submitted successfully',
+        endorsementId: endorsement.id,
+        userExisted: true,
+        addedToNetwork
+      })
     }
 
     // CHECK IF INVITATION ALREADY EXISTS
@@ -93,6 +134,23 @@ export async function POST(request: NextRequest) {
       }
     })
 
+    // CREATE ENDORSEMENT FOR NON-EXISTING USER
+    // This will be linked to them when they join
+    const endorsement = await prisma.endorsement.create({
+      data: {
+        endorserId: currentUser.id,
+        endorsedUserEmail: candidateEmail,
+        endorsedUserId: null, // Will be linked when user joins
+        jobId,
+        // Use referralReason as the recommendation
+        recommendation: referralReason,
+        // Store additional message if provided
+        endorsementContent: message || `Referred for ${job.title} position`,
+        status: 'PENDING',
+        createdAt: new Date()
+      }
+    })
+
     // TODO: Send invitation email with job context
     // The email should include:
     // 1. Invitation to join Clout
@@ -102,7 +160,9 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Invitation and referral sent successfully',
-      invitationId: invitation.id
+      invitationId: invitation.id,
+      endorsementId: endorsement.id,
+      userExisted: false
     })
 
   } catch (error) {

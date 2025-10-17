@@ -29,6 +29,17 @@ interface JobReferralModalProps {
 
 type ReferralMode = 'choose' | 'refer-trusted' | 'refer-new' | 'delegate'
 
+interface ExistingUserInfo {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+  profileImage?: string
+  bio?: string
+  inNetwork: boolean
+  relationshipStatus?: string
+}
+
 export default function JobReferralModal({
   isOpen,
   onClose,
@@ -49,6 +60,13 @@ export default function JobReferralModal({
   const [delegateName, setDelegateName] = useState('')
   const [message, setMessage] = useState('')
   const [referralReason, setReferralReason] = useState('')
+
+  // New states for email checking
+  const [existingUserFound, setExistingUserFound] = useState<ExistingUserInfo | null>(null)
+  const [showAddToNetworkDialog, setShowAddToNetworkDialog] = useState(false)
+  const [checkingEmail, setCheckingEmail] = useState(false)
+  const [trustAllocation, setTrustAllocation] = useState(10)
+  const [addToNetworkRequested, setAddToNetworkRequested] = useState(false)
 
   useEffect(() => {
     if (isOpen) {
@@ -85,6 +103,83 @@ export default function JobReferralModal({
     setDelegateName('')
     setMessage('')
     setReferralReason('')
+    setExistingUserFound(null)
+    setShowAddToNetworkDialog(false)
+    setTrustAllocation(10)
+    setAddToNetworkRequested(false)
+  }
+
+  // Check if email belongs to an existing user
+  const checkEmailExists = async (email: string) => {
+    if (!email) return
+
+    setCheckingEmail(true)
+    try {
+      const response = await fetch('/api/user/check-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email })
+      })
+
+      if (response.ok) {
+        const data = await response.json()
+        if (data.exists) {
+          setExistingUserFound({
+            id: data.user.id,
+            email: data.user.email,
+            firstName: data.user.firstName,
+            lastName: data.user.lastName,
+            profileImage: data.user.profileImage,
+            bio: data.user.bio,
+            inNetwork: data.relationship?.exists || false,
+            relationshipStatus: data.relationship?.status
+          })
+
+          // If user exists and not in network, show dialog
+          if (!data.relationship?.exists) {
+            setShowAddToNetworkDialog(true)
+          }
+        } else {
+          setExistingUserFound(null)
+        }
+      }
+    } catch (error) {
+      console.error('Error checking email:', error)
+    } finally {
+      setCheckingEmail(false)
+    }
+  }
+
+  // Add user to trusted network
+  const handleAddToNetwork = async () => {
+    if (!existingUserFound) return
+
+    setSubmitting(true)
+    try {
+      const response = await fetch('/api/relationships/establish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: existingUserFound.email,
+          trustAllocation
+        })
+      })
+
+      if (response.ok) {
+        setAddToNetworkRequested(true)
+        setShowAddToNetworkDialog(false)
+        // Refresh trusted contacts
+        await fetchTrustedContacts()
+      } else {
+        const error = await response.json()
+        alert(error.error || 'Failed to add to network')
+      }
+    } catch (error) {
+      console.error('Error adding to network:', error)
+      alert('Failed to add to network. Please try again.')
+    } finally {
+      setSubmitting(false)
+    }
   }
 
   const handleSubmit = async () => {
@@ -106,6 +201,11 @@ export default function JobReferralModal({
           endpoint = '/api/referrals/new'
           payload.candidateEmail = newPersonEmail
           payload.candidateName = newPersonName
+          // If this email belongs to an existing user, include their ID
+          if (existingUserFound) {
+            payload.existingUserId = existingUserFound.id
+            payload.addedToNetwork = addToNetworkRequested
+          }
           break
         case 'delegate':
           endpoint = '/api/referrals/delegate'
@@ -356,11 +456,44 @@ export default function JobReferralModal({
                   <input
                     type="email"
                     value={newPersonEmail}
-                    onChange={(e) => setNewPersonEmail(e.target.value)}
+                    onChange={(e) => {
+                      setNewPersonEmail(e.target.value)
+                      setExistingUserFound(null)
+                    }}
+                    onBlur={(e) => {
+                      if (e.target.value && e.target.validity.valid) {
+                        checkEmailExists(e.target.value)
+                      }
+                    }}
                     className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500"
                     placeholder="john@example.com"
                     required
                   />
+                  {checkingEmail && (
+                    <p className="text-sm text-gray-500 mt-1">Checking email...</p>
+                  )}
+                  {existingUserFound && (
+                    <div className="mt-2 p-3 bg-blue-50 border border-blue-200 rounded-md">
+                      <p className="text-sm text-blue-900 font-medium">
+                        This person is already on Clout!
+                      </p>
+                      {existingUserFound.inNetwork ? (
+                        <p className="text-sm text-blue-700 mt-1">
+                          They are already in your trusted network.
+                        </p>
+                      ) : (
+                        addToNetworkRequested ? (
+                          <p className="text-sm text-green-700 mt-1">
+                            ✓ Added to your trusted network
+                          </p>
+                        ) : (
+                          <p className="text-sm text-blue-700 mt-1">
+                            They will be tagged as the referral candidate.
+                          </p>
+                        )
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
 
@@ -478,6 +611,72 @@ export default function JobReferralModal({
           )}
         </div>
       </div>
+
+      {/* Add to Network Dialog */}
+      {showAddToNetworkDialog && existingUserFound && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-[60] p-4">
+          <div className="bg-white rounded-lg max-w-md w-full p-6">
+            <h3 className="text-lg font-semibold text-gray-900 mb-4">
+              Add to Your Trusted Network?
+            </h3>
+            <div className="mb-4">
+              <p className="text-gray-700 mb-3">
+                <strong>{existingUserFound.firstName} {existingUserFound.lastName}</strong> ({existingUserFound.email}) is already on Clout.
+              </p>
+              <p className="text-gray-600">
+                Would you like to add them to your trusted network and allocate some trust to them?
+              </p>
+            </div>
+
+            <div className="mb-6">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Trust Allocation (0-100 points)
+              </label>
+              <div className="flex items-center space-x-4">
+                <input
+                  type="range"
+                  min="0"
+                  max="100"
+                  value={trustAllocation}
+                  onChange={(e) => setTrustAllocation(parseInt(e.target.value))}
+                  className="flex-1"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  value={trustAllocation}
+                  onChange={(e) => setTrustAllocation(parseInt(e.target.value) || 0)}
+                  className="w-20 px-2 py-1 border border-gray-300 rounded-md"
+                />
+              </div>
+              <p className="text-xs text-gray-500 mt-1">
+                You can adjust this later in your trust network settings.
+              </p>
+            </div>
+
+            <div className="flex justify-end space-x-3">
+              <button
+                onClick={() => {
+                  setShowAddToNetworkDialog(false)
+                  // They can still submit the referral without adding to network
+                }}
+                className="px-4 py-2 text-gray-600 hover:text-gray-800"
+                disabled={submitting}
+              >
+                No, Continue Without Adding
+              </button>
+              <button
+                onClick={handleAddToNetwork}
+                disabled={submitting}
+                className="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {submitting ? 'Adding...' : 'Yes, Add to Network'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 
