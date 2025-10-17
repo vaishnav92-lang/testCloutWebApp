@@ -3,14 +3,16 @@
  *
  * When a pending relationship is confirmed, this endpoint:
  * 1. Updates the relationship status to CONFIRMED
- * 2. Allows the confirming user to allocate trust
- * 3. Triggers EigenTrust recomputation
+ * 2. Triggers EigenTrust recomputation
+ *
+ * Note: Trust allocation is now handled separately via /api/trust-allocations
  */
 
 import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { computeEigenTrust } from '@/lib/eigentrust-new'
 
 export async function POST(request: NextRequest) {
   try {
@@ -24,7 +26,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Get request data
-    const { relationshipId, trustAllocation } = await request.json()
+    const { relationshipId } = await request.json()
 
     if (!relationshipId) {
       return NextResponse.json({
@@ -32,21 +34,10 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    if (trustAllocation !== undefined && (trustAllocation < 0 || trustAllocation > 100)) {
-      return NextResponse.json({
-        error: 'Trust allocation must be between 0 and 100'
-      }, { status: 400 })
-    }
-
     // Get current user
     const currentUser = await prisma.user.findUnique({
       where: { email: session.user.email },
-      select: {
-        id: true,
-        totalTrustPoints: true,
-        allocatedTrust: true,
-        availableTrust: true
-      }
+      select: { id: true }
     })
 
     if (!currentUser) {
@@ -87,58 +78,24 @@ export async function POST(request: NextRequest) {
       }, { status: 400 })
     }
 
-    // Validate trust allocation if provided
-    if (trustAllocation !== undefined && trustAllocation > 0) {
-      if (currentUser.availableTrust < trustAllocation) {
-        return NextResponse.json({
-          error: `Insufficient trust points. Available: ${currentUser.availableTrust}, Requested: ${trustAllocation}`
-        }, { status: 400 })
-      }
-    }
-
-    // Update relationship in a transaction
-    await prisma.$transaction(async (tx) => {
-      // Update relationship status to confirmed
-      const updateData: any = {
-        status: 'CONFIRMED'
-      }
-
-      // Add trust allocation if provided
-      if (trustAllocation !== undefined && trustAllocation > 0) {
-        if (isUser1) {
-          updateData.user1TrustAllocated = trustAllocation
-          updateData.user1TrustScore = Math.round(trustAllocation / 10) // Legacy compatibility
-        } else {
-          updateData.user2TrustAllocated = trustAllocation
-          updateData.user2TrustScore = Math.round(trustAllocation / 10) // Legacy compatibility
-        }
-
-        // Update user's trust allocation tracking
-        await tx.user.update({
-          where: { id: currentUser.id },
-          data: {
-            allocatedTrust: { increment: trustAllocation },
-            availableTrust: { decrement: trustAllocation }
-          }
-        })
-      }
-
-      await tx.relationship.update({
-        where: { id: relationshipId },
-        data: updateData
-      })
+    // Update relationship status to confirmed
+    await prisma.relationship.update({
+      where: { id: relationshipId },
+      data: { status: 'CONFIRMED' }
     })
 
     // Trigger trust score recomputation in the background
-    import('@/lib/eigentrust').then(({ updateUserCloutScores }) => {
-      updateUserCloutScores().catch(error => {
-        console.error('Background trust computation failed:', error)
-      })
+    computeEigenTrust(
+      0.15,        // decayFactor
+      100,         // maxIterations
+      0.000001,    // convergenceThreshold
+      "relationship_confirm" // triggeredBy
+    ).catch(error => {
+      console.error('Background trust computation failed:', error)
     })
 
     return NextResponse.json({
-      message: 'Relationship confirmed successfully',
-      trustAllocated: trustAllocation || 0
+      message: 'Relationship confirmed successfully'
     })
 
   } catch (error) {

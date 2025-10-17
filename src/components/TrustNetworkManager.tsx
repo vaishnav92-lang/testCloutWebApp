@@ -46,27 +46,37 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
       const relResponse = await fetch('/api/user/relationships')
       const relData = await relResponse.json()
 
-      // Fetch user stats
-      const statsResponse = await fetch('/api/user/stats')
-      const statsData = await statsResponse.json()
+      // Fetch current trust allocations from the new API
+      const allocResponse = await fetch('/api/trust-allocations')
+      const allocData = await allocResponse.json()
 
-      if (relResponse.ok && statsResponse.ok) {
+      if (relResponse.ok && allocResponse.ok) {
         // Combine confirmed relationships and pending invitations
         const networkMembers: NetworkMember[] = []
         const initialAllocations: Record<string, number> = {}
 
+        // Create a map of user ID to current allocation (convert back to 0-100 scale)
+        const currentAllocMap: Record<string, number> = {}
+        if (allocData.currentAllocations) {
+          allocData.currentAllocations.forEach((alloc: any) => {
+            currentAllocMap[alloc.receiverId] = Math.round(alloc.proportion * 100)
+          })
+        }
+
         // Process existing relationships
         relData.connections.forEach((conn: any) => {
           const memberId = conn.connectedUser.id
+          const currentAllocation = currentAllocMap[memberId] || 0
+
           networkMembers.push({
             id: memberId,
             relationshipId: conn.id,
             name: conn.connectedUser.name || 'Unknown',
             email: conn.connectedUser.email,
             status: conn.status,
-            currentAllocation: conn.myTrustAllocated || 0
+            currentAllocation: currentAllocation
           })
-          initialAllocations[memberId] = conn.myTrustAllocated || 0
+          initialAllocations[memberId] = currentAllocation
         })
 
         // Process pending invitations
@@ -82,9 +92,6 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
           })
           initialAllocations[tempId] = 0
         })
-
-        // Don't automatically distribute unallocated trust - let user decide
-        // Unallocated trust automatically goes to admin in EigenTrust computation
 
         setMembers(networkMembers)
         setAllocations(initialAllocations)
@@ -147,28 +154,27 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
     setMessage('')
 
     try {
-      // Save each changed allocation
-      const promises = members.map(async (member) => {
-        const newAllocation = allocations[member.id] || 0
+      // Convert allocations to the new format expected by /api/trust-allocations
+      const trustAllocations = members
+        .filter(member => member.status === 'CONFIRMED') // Only confirmed members
+        .map(member => ({
+          receiverId: member.id,
+          proportion: (allocations[member.id] || 0) / 100 // Convert from 0-100 to 0-1 scale
+        }))
+        .filter(alloc => alloc.proportion > 0) // Only include non-zero allocations
 
-        // Only update if changed and relationship is confirmed
-        if (member.status === 'CONFIRMED' && newAllocation !== member.currentAllocation) {
-          const response = await fetch('/api/relationships/update-trust', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              relationshipId: member.relationshipId,
-              trustAllocation: newAllocation
-            })
-          })
-
-          if (!response.ok) {
-            throw new Error(`Failed to update trust for ${member.name}`)
-          }
-        }
+      const response = await fetch('/api/trust-allocations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          allocations: trustAllocations
+        })
       })
 
-      await Promise.all(promises)
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.error || 'Failed to save allocations')
+      }
 
       setMessage('Trust allocations saved successfully!')
       setTimeout(() => setMessage(''), 3000)
@@ -178,7 +184,7 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
       onRefresh()
     } catch (error) {
       console.error('Error saving allocations:', error)
-      setMessage('Failed to save some allocations')
+      setMessage(error instanceof Error ? error.message : 'Failed to save allocations')
     } finally {
       setSaving(false)
     }
