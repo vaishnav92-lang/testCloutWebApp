@@ -81,32 +81,37 @@ export async function POST(request: NextRequest) {
 
     const referredUser = relationship.user1Id === currentUser.id ? relationship.user2 : relationship.user1
 
-    // CREATE REFERRAL RECORD
-    // Note: You'll need to create a Referral model in your schema
-    // For now, we'll create a placeholder job application with referral context
+    // CREATE REFERRAL RECORD AS AN ENDORSEMENT WITH JOB CONTEXT
 
     // CHECK IF ALREADY REFERRED
-    const existingApplication = await prisma.jobApplication.findUnique({
+    const existingEndorsement = await prisma.endorsement.findFirst({
       where: {
-        userId_jobId: {
-          userId: referredUser.id,
-          jobId: jobId
-        }
+        endorserId: currentUser.id,
+        endorsedUserId: referredUser.id,
+        jobId: jobId
       }
     })
 
-    if (existingApplication) {
+    if (existingEndorsement) {
       return NextResponse.json({
-        error: 'This person has already been referred for this job'
+        error: 'You have already referred this person for this job'
       }, { status: 400 })
     }
 
-    // CREATE JOB APPLICATION WITH REFERRAL CONTEXT
-    const application = await prisma.jobApplication.create({
+    // CREATE ENDORSEMENT FOR THE JOB REFERRAL
+    const endorsement = await prisma.endorsement.create({
       data: {
-        userId: referredUser.id,
+        endorserId: currentUser.id,
+        endorsedUserId: referredUser.id,
+        endorsedUserEmail: referredUser.email,
         jobId: jobId,
-        status: 'APPLIED'
+        isJobReferral: true,
+        // Use referralReason as the recommendation
+        recommendation: referralReason,
+        // Store additional message if provided
+        endorsementContent: message || `Referred for ${job.title} position at ${job.company.name}`,
+        status: 'PENDING',
+        createdAt: new Date()
       }
     })
 
@@ -117,7 +122,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json({
       message: 'Referral submitted successfully',
-      applicationId: application.id
+      endorsementId: endorsement.id
     })
 
   } catch (error) {
