@@ -19,7 +19,7 @@ export async function POST(request: NextRequest) {
       phone,
       location,
       linkedinUrl,
-      userIntent,
+      userIntent, // This will be an array from frontend
       inviteToken,
       invitationId
     } = await request.json()
@@ -35,6 +35,9 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
+    // Convert userIntent array to boolean fields
+    const userIntentArray = Array.isArray(userIntent) ? userIntent : []
+
     // If there's an invite token, mark it as used
     const updateData: any = {
       firstName,
@@ -42,7 +45,15 @@ export async function POST(request: NextRequest) {
       phone: phone || null,
       location: location || null,
       linkedinUrl: linkedinUrl || null,
-      userIntent: userIntent || 'ACTIVELY_LOOKING',
+      // Keep old field for backward compatibility, use first value or default
+      userIntent: userIntentArray.includes('ACTIVELY_LOOKING') ? 'ACTIVELY_LOOKING' :
+                  userIntentArray.length > 0 ? 'HYBRID' : 'ACTIVELY_LOOKING',
+      // New boolean fields
+      wantsToHireTalent: userIntentArray.includes('HIRE_TALENT'),
+      wantsToReferTalent: userIntentArray.includes('REFER_TALENT'),
+      wantsToConnectPeople: userIntentArray.includes('CONNECT_PEOPLE'),
+      wantsToMeetPeople: userIntentArray.includes('MEET_PEOPLE'),
+      isActivelyLooking: userIntentArray.includes('ACTIVELY_LOOKING'),
       isProfileComplete: true,
     }
 

@@ -28,7 +28,15 @@ model User {
   invitedAt              DateTime?
   createdAt              DateTime              @default(now())
   updatedAt              DateTime              @updatedAt
+  // DEPRECATED: Use the boolean fields below instead
   userIntent             UserIntent            @default(ACTIVELY_LOOKING)
+
+  // New boolean fields for multiple user intents
+  wantsToHireTalent      Boolean               @default(false)
+  wantsToReferTalent     Boolean               @default(false)
+  wantsToConnectPeople   Boolean               @default(false)
+  wantsToMeetPeople      Boolean               @default(false)
+  isActivelyLooking      Boolean               @default(true)
   availableInvites       Int                   @default(3)
   charityDonated         Float                 @default(0.0)
   engagementLevel        EngagementLevel       @default(ACTIVE_SEEKER)
@@ -359,9 +367,13 @@ enum ApplicationStatus {
 }
 
 enum UserIntent {
+  HIRE_TALENT
+  REFER_TALENT
+  CONNECT_PEOPLE
+  MEET_PEOPLE
+  ACTIVELY_LOOKING
   RECOMMEND_ONLY
   HYBRID
-  ACTIVELY_LOOKING
 }
 
 enum UserType {
