@@ -58,31 +58,27 @@ export async function POST(request: NextRequest) {
       }, { status: 404 })
     }
 
-    // VERIFY CONTACT EXISTS AND IS IN TRUSTED NETWORK
-    console.log('Looking for relationship with contactId:', contactId, 'and currentUserId:', currentUser.id)
+    // GET THE USER BEING REFERRED
+    // The UI already filtered the dropdown to show only appropriate contacts
+    console.log('Looking up user with contactId:', contactId)
 
-    const relationship = await prisma.relationship.findFirst({
-      where: {
-        OR: [
-          { user1Id: currentUser.id, user2Id: contactId },
-          { user1Id: contactId, user2Id: currentUser.id }
-        ],
-        status: 'CONFIRMED'
-      },
-      include: {
-        user1: true,
-        user2: true
+    const referredUser = await prisma.user.findUnique({
+      where: { id: contactId },
+      select: {
+        id: true,
+        email: true,
+        firstName: true,
+        lastName: true
       }
     })
 
-    if (!relationship) {
-      console.log('No confirmed relationship found between', currentUser.id, 'and', contactId)
+    if (!referredUser) {
+      console.log('User not found with contactId:', contactId)
       return NextResponse.json({
-        error: 'Contact not found in your trusted network'
-      }, { status: 400 })
+        error: 'User not found'
+      }, { status: 404 })
     }
 
-    const referredUser = relationship.user1Id === currentUser.id ? relationship.user2 : relationship.user1
     console.log('Found referred user:', referredUser.id, referredUser.email)
 
     // CREATE REFERRAL RECORD AS AN ENDORSEMENT WITH JOB CONTEXT
@@ -103,6 +99,16 @@ export async function POST(request: NextRequest) {
     }
 
     // CREATE ENDORSEMENT FOR THE JOB REFERRAL
+    console.log('Creating endorsement with data:', {
+      endorserId: currentUser.id,
+      endorsedUserId: referredUser.id,
+      endorsedUserEmail: referredUser.email,
+      jobId: jobId,
+      isJobReferral: true,
+      recommendation: referralReason,
+      status: 'PENDING_CANDIDATE_ACTION'
+    })
+
     const endorsement = await prisma.endorsement.create({
       data: {
         endorserId: currentUser.id,
@@ -118,6 +124,8 @@ export async function POST(request: NextRequest) {
         createdAt: new Date()
       }
     })
+
+    console.log('Endorsement created successfully:', endorsement.id)
 
     // TODO: Send notification emails to:
     // 1. The referred person (about the opportunity)
