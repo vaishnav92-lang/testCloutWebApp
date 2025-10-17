@@ -104,6 +104,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // CHECK IF ALREADY ENDORSED (global check due to unique constraint)
+    const existingEndorsement = await prisma.endorsement.findFirst({
+      where: {
+        endorserId: currentUser.id,
+        endorsedUserEmail: candidateEmail
+      }
+    })
+
+    if (existingEndorsement) {
+      return NextResponse.json({
+        error: 'You have already endorsed this person. You can only endorse someone once.'
+      }, { status: 400 })
+    }
+
     // CREATE ENDORSEMENT RECORD WITH JOB CONTEXT
     const endorsement = await prisma.endorsement.create({
       data: {
