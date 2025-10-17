@@ -33,6 +33,7 @@ import NetworkConnectionsCard from '@/components/NetworkConnectionsCard'
 import CloutJourneyCard from '@/components/CloutJourneyCard'
 import PendingNetworkRequests from '@/components/PendingNetworkRequests'
 import TrustNetworkManager from '@/components/TrustNetworkManager'
+import TrustedContactsSidebar from '@/components/TrustedContactsSidebar'
 
 export default function Dashboard() {
   // HOOKS AND ROUTING
@@ -76,6 +77,11 @@ export default function Dashboard() {
   const [endorsements, setEndorsements] = useState([])                    // Endorsements given by current user
   const [endorsementsLoading, setEndorsementsLoading] = useState(true)    // Endorsements loading state
   const [endorsementFormOpen, setEndorsementFormOpen] = useState(false)   // Endorsement form visibility
+
+  // DRAG AND DROP STATE
+  const [draggedContact, setDraggedContact] = useState(null)              // Currently dragged contact
+  const [dropTargetJob, setDropTargetJob] = useState(null)               // Job being dragged over
+  const [jobReferralContext, setJobReferralContext] = useState(null)     // Context for new endorsement form
 
   // DASHBOARD VIEW STATE
   const [currentView, setCurrentView] = useState<'node' | 'hiring-manager' | 'jobs'>('node')  // Toggle between dashboards
@@ -211,6 +217,82 @@ export default function Dashboard() {
       setRelationshipMessage('Something went wrong. Please try again.')
     } finally {
       setRelationshipLoading(false)
+    }
+  }
+
+  // DRAG AND DROP HANDLERS
+  const handleContactDragStart = (contact) => {
+    setDraggedContact(contact)
+  }
+
+  const handleContactDragEnd = () => {
+    setDraggedContact(null)
+    setDropTargetJob(null)
+  }
+
+  const handleJobDragOver = (e, job) => {
+    e.preventDefault()
+    e.dataTransfer.dropEffect = 'copy'
+    setDropTargetJob(job.id)
+  }
+
+  const handleJobDragLeave = (e) => {
+    // Only clear if we're actually leaving the job card
+    if (!e.currentTarget.contains(e.relatedTarget)) {
+      setDropTargetJob(null)
+    }
+  }
+
+  const handleJobDrop = async (e, job) => {
+    e.preventDefault()
+    setDropTargetJob(null)
+
+    let contact
+    try {
+      // Try to get contact from drag data first
+      const dragData = e.dataTransfer.getData('application/json')
+      if (dragData) {
+        contact = JSON.parse(dragData)
+      } else if (draggedContact) {
+        contact = draggedContact
+      } else {
+        return
+      }
+    } catch (error) {
+      console.error('Error parsing drag data:', error)
+      return
+    }
+
+    try {
+      const response = await fetch('/api/endorsements/link-job', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: job.id,
+          endorsedUserEmail: contact.email
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        if (data.action === 'linked') {
+          // Show success message for existing endorsement
+          alert(`✅ ${data.message}`)
+        } else if (data.action === 'create_new') {
+          // Set context and open endorsement form
+          setJobReferralContext({
+            job: data.jobContext,
+            contact: contact
+          })
+          setEndorsementFormOpen(true)
+        }
+      } else {
+        alert(`❌ ${data.error}`)
+      }
+    } catch (error) {
+      console.error('Error linking job:', error)
+      alert('❌ Failed to process referral')
     }
   }
 
@@ -436,12 +518,25 @@ export default function Dashboard() {
 
                 </>
               ) : currentView === 'jobs' ? (
-                /* Jobs Dashboard */
+                /* Jobs Dashboard with Drag & Drop */
                 <div className="border-t border-gray-200 pt-6">
                   <div className="flex items-center justify-between mb-6">
                     <h2 className="text-2xl font-bold text-gray-900">Available Jobs</h2>
                     <span className="text-sm text-gray-500">{jobs.length} jobs available</span>
                   </div>
+
+                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                    {/* Trusted Contacts Sidebar */}
+                    <div className="lg:col-span-1">
+                      <TrustedContactsSidebar
+                        onContactDragStart={handleContactDragStart}
+                        onContactDragEnd={handleContactDragEnd}
+                        className="sticky top-6"
+                      />
+                    </div>
+
+                    {/* Jobs Grid */}
+                    <div className="lg:col-span-3">
 
                   {loading ? (
                     <div className="text-center py-8">
@@ -452,12 +547,26 @@ export default function Dashboard() {
                       <div className="text-gray-500">No jobs available at the moment.</div>
                     </div>
                   ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {jobs.map((job) => (
                         <div
                           key={job.id}
-                          onClick={() => router.push(`/jobs/${job.id}`)}
-                          className="bg-white border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow cursor-pointer"
+                          onDragOver={(e) => handleJobDragOver(e, job)}
+                          onDragLeave={handleJobDragLeave}
+                          onDrop={(e) => handleJobDrop(e, job)}
+                          className={`relative bg-white border rounded-lg p-6 transition-all duration-200 cursor-pointer ${
+                            dropTargetJob === job.id
+                              ? 'border-blue-400 shadow-lg bg-blue-50 ring-2 ring-blue-200'
+                              : draggedContact
+                              ? 'border-gray-300 hover:border-blue-300 hover:shadow-md'
+                              : 'border-gray-200 hover:shadow-md'
+                          }`}
+                          onClick={(e) => {
+                            // Don't navigate if we're in drag mode
+                            if (!draggedContact) {
+                              router.push(`/jobs/${job.id}`)
+                            }
+                          }}
                         >
                           <div className="flex items-start justify-between mb-4">
                             <div className="flex-1">
@@ -521,10 +630,25 @@ export default function Dashboard() {
                               View Details
                             </button>
                           </div>
+
+                          {/* Drag & Drop Overlay */}
+                          {dropTargetJob === job.id && (
+                            <div className="absolute inset-0 bg-blue-500 bg-opacity-10 border-2 border-dashed border-blue-400 rounded-lg flex items-center justify-center pointer-events-none">
+                              <div className="text-center">
+                                <div className="text-2xl mb-2">👤➡️💼</div>
+                                <div className="text-blue-700 font-medium">Drop to refer for this job</div>
+                                <div className="text-blue-600 text-sm">
+                                  {draggedContact && `${draggedContact.firstName || draggedContact.email} → ${job.title}`}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
                       ))}
                     </div>
                   )}
+                    </div>
+                  </div>
                 </div>
               ) : (
                 /* Hiring Manager Dashboard */
@@ -542,17 +666,28 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* Endorsement Form - Only show for node dashboard */}
-      {currentView === 'node' && (
+      {/* Endorsement Form - Show for both node and jobs dashboard */}
+      {(currentView === 'node' || currentView === 'jobs') && (
         <EndorsementForm
           isOpen={endorsementFormOpen}
-          onClose={() => setEndorsementFormOpen(false)}
-          onSuccess={() => fetchEndorsements()}
+          onClose={() => {
+            setEndorsementFormOpen(false)
+            setJobReferralContext(null)
+          }}
+          onSuccess={() => {
+            fetchEndorsements()
+            if (jobReferralContext) {
+              alert(`✅ Successfully referred ${jobReferralContext.contact.firstName || jobReferralContext.contact.email} for ${jobReferralContext.job.title}!`)
+            }
+            setJobReferralContext(null)
+          }}
           userInfo={{
             firstName: session.user.firstName || '',
             lastName: session.user.lastName || '',
             email: session.user.email
           }}
+          isJobReferral={!!jobReferralContext}
+          jobReferralContext={jobReferralContext}
         />
       )}
     </div>

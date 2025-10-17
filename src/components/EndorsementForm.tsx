@@ -14,7 +14,7 @@
 
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 
 interface EndorsementFormProps {
   isOpen: boolean
@@ -26,6 +26,19 @@ interface EndorsementFormProps {
     email: string
   }
   isJobReferral?: boolean  // Hide the "types of roles" question for job referrals
+  jobReferralContext?: {   // Context for job referrals via drag-and-drop
+    job: {
+      id: string
+      title: string
+      companyName: string
+    }
+    contact: {
+      id: string
+      firstName?: string
+      lastName?: string
+      email: string
+    }
+  }
 }
 
 interface FormData {
@@ -41,7 +54,7 @@ interface FormData {
   recommendation: string
 }
 
-export default function EndorsementForm({ isOpen, onClose, onSuccess, userInfo, isJobReferral = false }: EndorsementFormProps) {
+export default function EndorsementForm({ isOpen, onClose, onSuccess, userInfo, isJobReferral = false, jobReferralContext }: EndorsementFormProps) {
   const [formData, setFormData] = useState<FormData>({
     endorsedEmail: '',
     endorsedName: '',
@@ -58,6 +71,20 @@ export default function EndorsementForm({ isOpen, onClose, onSuccess, userInfo, 
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+
+  // Pre-fill form when job referral context is provided
+  useEffect(() => {
+    if (jobReferralContext && isOpen) {
+      const { contact } = jobReferralContext
+      setFormData(prev => ({
+        ...prev,
+        endorsedEmail: contact.email,
+        endorsedName: contact.firstName && contact.lastName
+          ? `${contact.firstName} ${contact.lastName}`
+          : contact.email
+      }))
+    }
+  }, [jobReferralContext, isOpen])
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))

@@ -81,6 +81,20 @@ export async function POST(request: NextRequest) {
 
     // If user exists in the system, create a proper job referral endorsement
     if (candidateUserId) {
+      // CHECK IF ALREADY ENDORSED (global check due to unique constraint)
+      const existingEndorsement = await prisma.endorsement.findFirst({
+        where: {
+          endorserId: currentUser.id,
+          endorsedUserEmail: candidateEmail
+        }
+      })
+
+      if (existingEndorsement) {
+        return NextResponse.json({
+          error: 'You have already endorsed this person. You can only endorse someone once.'
+        }, { status: 400 })
+      }
+
       // Create endorsement for existing user (with job context)
       const endorsement = await prisma.endorsement.create({
         data: {
@@ -133,6 +147,20 @@ export async function POST(request: NextRequest) {
         status: 'PENDING'
       }
     })
+
+    // CHECK IF ALREADY ENDORSED (global check due to unique constraint)
+    const existingEndorsement = await prisma.endorsement.findFirst({
+      where: {
+        endorserId: currentUser.id,
+        endorsedUserEmail: candidateEmail
+      }
+    })
+
+    if (existingEndorsement) {
+      return NextResponse.json({
+        error: 'You have already endorsed this person. You can only endorse someone once.'
+      }, { status: 400 })
+    }
 
     // CREATE ENDORSEMENT FOR NON-EXISTING USER
     // This will be linked to them when they join
