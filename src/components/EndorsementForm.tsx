@@ -25,6 +25,7 @@ interface EndorsementFormProps {
     lastName?: string
     email: string
   }
+  isJobReferral?: boolean  // Hide the "types of roles" question for job referrals
 }
 
 interface FormData {
@@ -40,7 +41,7 @@ interface FormData {
   recommendation: string
 }
 
-export default function EndorsementForm({ isOpen, onClose, onSuccess, userInfo }: EndorsementFormProps) {
+export default function EndorsementForm({ isOpen, onClose, onSuccess, userInfo, isJobReferral = false }: EndorsementFormProps) {
   const [formData, setFormData] = useState<FormData>({
     endorsedEmail: '',
     endorsedName: '',
@@ -248,20 +249,22 @@ export default function EndorsementForm({ isOpen, onClose, onSuccess, userInfo }
                 />
               </div>
 
-              {/* Roles Value Add */}
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  What types of roles would they add most value in? *
-                </label>
-                <textarea
-                  required
-                  rows={3}
-                  value={formData.rolesValueAdd}
-                  onChange={(e) => handleInputChange('rolesValueAdd', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
-                  placeholder="They would excel in senior engineering roles, technical leadership positions, or roles requiring deep system architecture expertise..."
-                />
-              </div>
+              {/* Roles Value Add - Hidden for job referrals */}
+              {!isJobReferral && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">
+                    What types of roles would they add most value in? *
+                  </label>
+                  <textarea
+                    required
+                    rows={3}
+                    value={formData.rolesValueAdd}
+                    onChange={(e) => handleInputChange('rolesValueAdd', e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                    placeholder="They would excel in senior engineering roles, technical leadership positions, or roles requiring deep system architecture expertise..."
+                  />
+                </div>
+              )}
 
               {/* Work Output */}
               <div>
