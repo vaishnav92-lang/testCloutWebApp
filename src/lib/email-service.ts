@@ -48,8 +48,8 @@ export async function sendInvitationEmail(data: InvitationEmailData) {
   const resend = getResend()
 
   const inviteLink = data.inviteCode
-    ? `${BASE_URL}/auth/register?invite=${data.inviteCode}`
-    : `${BASE_URL}/auth/register`
+    ? `${BASE_URL}/join/${data.inviteCode}`
+    : `${BASE_URL}/join`
 
   const html = `
     <!DOCTYPE html>
@@ -218,7 +218,7 @@ export async function sendJobReferralEmail(data: JobReferralEmailData) {
 export async function sendDelegationEmail(data: DelegationEmailData) {
   const resend = getResend()
 
-  const signupLink = `${BASE_URL}/auth/register`
+  const signupLink = `${BASE_URL}/join`
 
   const html = `
     <!DOCTYPE html>
