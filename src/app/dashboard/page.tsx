@@ -621,6 +621,15 @@ export default function Dashboard() {
                               Refer Talent
                             </button>
                             <button
+                              className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors"
+                              onClick={(e) => {
+                                e.stopPropagation() // Prevent card click from triggering
+                                router.push(`/jobs/${job.id}/refer?mode=delegate`)
+                              }}
+                            >
+                              Forward Request
+                            </button>
+                            <button
                               className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
                               onClick={(e) => {
                                 e.stopPropagation() // Prevent card click from triggering
