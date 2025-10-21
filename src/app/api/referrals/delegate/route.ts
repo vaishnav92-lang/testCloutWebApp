@@ -90,21 +90,33 @@ export async function POST(request: NextRequest) {
       const relationship = await prisma.relationship.findFirst({
         where: {
           OR: [
-            { userId: currentUser.id, connectedUserId: delegateUser.id },
-            { userId: delegateUser.id, connectedUserId: currentUser.id }
+            { user1Id: currentUser.id, user2Id: delegateUser.id },
+            { user1Id: delegateUser.id, user2Id: currentUser.id }
           ]
         }
       })
 
-      // If not in network, optionally create a pending relationship
+      // If not in network, create a confirmed relationship (unidirectional)
       if (!relationship) {
         await prisma.relationship.create({
           data: {
-            userId: currentUser.id,
-            connectedUserId: delegateUser.id,
-            trustAllocation: 10,
-            status: 'PENDING',
-            endorserEmail: currentUser.email
+            user1Id: currentUser.id,
+            user2Id: delegateUser.id,
+            user1TrustAllocated: 10, // Default minimal trust for delegation
+            user2TrustAllocated: 0,  // They haven't reciprocated
+            // Legacy fields
+            user1TrustScore: 1,
+            user2TrustScore: 0,
+            status: 'CONFIRMED' // Immediately confirmed (unidirectional)
+          }
+        })
+
+        // Update user's trust allocation
+        await prisma.user.update({
+          where: { id: currentUser.id },
+          data: {
+            availableTrust: { decrement: 10 },
+            allocatedTrust: { increment: 10 }
           }
         })
       }
