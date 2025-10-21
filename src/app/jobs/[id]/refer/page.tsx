@@ -8,7 +8,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
 interface Job {
@@ -51,7 +51,10 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
   const [job, setJob] = useState<Job | null>(null)
   const [trustedContacts, setTrustedContacts] = useState<TrustedContact[]>([])
   const [loading, setLoading] = useState(true)
-  const [mode, setMode] = useState<'refer' | 'delegate'>('refer')
+  const searchParams = useSearchParams()
+  const [mode, setMode] = useState<'refer' | 'delegate'>(
+    searchParams.get('mode') === 'delegate' ? 'delegate' : 'refer'
+  )
   const { data: session } = useSession()
   const router = useRouter()
 
