@@ -40,7 +40,7 @@ interface DelegationEmailData {
 interface NetworkInvitationEmailData {
   recipientEmail: string
   senderName: string
-  trustPoints: number
+  // REMOVED trustPoints - NEVER reveal trust scores to recipients!
 }
 
 /**
@@ -345,14 +345,8 @@ export async function sendNetworkInvitationEmail(data: NetworkInvitationEmailDat
             <p style="font-size: 18px; color: #111827;">Great news!</p>
 
             <p style="color: #4b5563; line-height: 1.6;">
-              <strong>${data.senderName}</strong> has added you to their trusted professional network on Clout Careers
-              and allocated <strong>${data.trustPoints} trust points</strong> to you.
+              <strong>${data.senderName}</strong> has added you to their trusted professional network on Clout Careers.
             </p>
-
-            <div class="trust-badge">
-              <div style="font-size: 36px; color: #7c3aed; font-weight: bold;">${data.trustPoints}</div>
-              <div style="color: #6b7280; font-size: 14px; margin-top: 5px;">Trust Points Allocated</div>
-            </div>
 
             <p style="color: #4b5563; line-height: 1.6;">
               This means ${data.senderName} values your professional judgment and wants to:
@@ -366,8 +360,7 @@ export async function sendNetworkInvitationEmail(data: NetworkInvitationEmailDat
             </ul>
 
             <p style="color: #4b5563; line-height: 1.6;">
-              The trust points indicate how much ${data.senderName} values your professional opinion
-              in their network. You can reciprocate by adding them to your trusted network as well.
+              You can reciprocate by adding ${data.senderName} to your trusted network as well.
             </p>
 
             <div style="text-align: center; margin: 30px 0;">

@@ -106,45 +106,61 @@ export async function POST(request: NextRequest) {
 
     // FLOW 1: EXISTING USER PATH
     if (targetUser) {
-      // User already exists in system - create pending relationship and allocate trust
+      // User already exists in system - create CONFIRMED relationship with immediate trust allocation
       const relationship = await prisma.$transaction(async (tx) => {
-        // Create relationship WITHOUT trust allocation for pending relationships
+        // Create relationship WITH immediate trust allocation (unidirectional)
         const rel = await tx.relationship.create({
           data: {
             user1Id: currentUser.id,
             user2Id: targetUser.id,
-            user1TrustAllocated: 0, // No trust allocated until confirmed
-            user2TrustAllocated: 0,
+            user1TrustAllocated: trustAllocation, // Allocate trust immediately
+            user2TrustAllocated: 0, // Other user starts with 0 (they can add back if they want)
             // Legacy fields for compatibility
-            user1TrustScore: 0, // No trust score until confirmed
+            user1TrustScore: Math.round(trustAllocation / 10), // Convert to legacy scale
             user2TrustScore: 0,
-            status: 'PENDING'
+            status: 'CONFIRMED' // Immediately confirmed (no consent needed)
           }
         })
 
-        // DON'T update user's trust allocation for pending relationships
-        // Trust will be allocated when the relationship is confirmed
+        // Update user's trust allocation immediately
+        await tx.user.update({
+          where: { id: currentUser.id },
+          data: {
+            availableTrust: currentUser.availableTrust - trustAllocation,
+            allocatedTrust: currentUser.allocatedTrust + trustAllocation
+          }
+        })
 
         return rel
       })
 
       // VALIDATION EMAIL (for existing users)
       // Send email notifying them they've been added to a trusted network
+      // PRIVACY: Never reveal trust scores in emails!
       try {
         await sendNetworkInvitationEmail({
           recipientEmail: email,
-          senderName: senderName,
-          trustPoints: trustAllocation
+          senderName: senderName
+          // NEVER pass trustPoints - this violates privacy!
         })
       } catch (emailError) {
         console.error('Failed to send network invitation email:', emailError)
         // Don't fail the whole operation if email fails
       }
 
-      // Note: No trust computation needed since pending relationships don't affect trust scores
+      // Trigger trust score recomputation since relationship is immediately confirmed
+      const { computeEigenTrust } = await import('@/lib/eigentrust-new')
+      computeEigenTrust(
+        0.15,        // decayFactor
+        100,         // maxIterations
+        0.000001,    // convergenceThreshold
+        "relationship_establish" // triggeredBy
+      ).catch(error => {
+        console.error('Background trust computation failed:', error)
+      })
 
       return NextResponse.json({
-        message: 'Validation request sent to existing user',
+        message: `Successfully added ${targetUser.email} to your trusted network with ${trustAllocation} trust points`,
         relationshipId: relationship.id
       })
 
@@ -186,25 +202,27 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Create pending relationship WITHOUT trust allocation
+        // Create CONFIRMED relationship WITH immediate trust allocation
         await tx.relationship.create({
           data: {
             user1Id: currentUser.id,
             user2Id: newUser.id,
-            user1TrustAllocated: 0, // No trust allocated until they join and confirm
-            user2TrustAllocated: 0,
+            user1TrustAllocated: trustAllocation, // Allocate trust immediately
+            user2TrustAllocated: 0, // New user starts with 0
             // Legacy fields for compatibility
-            user1TrustScore: 0, // No trust score until confirmed
+            user1TrustScore: Math.round(trustAllocation / 10), // Convert to legacy scale
             user2TrustScore: 0,
-            status: 'PENDING'
+            status: 'CONFIRMED' // Immediately confirmed
           }
         })
 
-        // Update sender's legacy invite tracking only
+        // Update sender's trust allocation AND legacy invite tracking
         await tx.user.update({
           where: { id: currentUser.id },
           data: {
-            // DON'T update trust allocation for pending relationships
+            // Update trust allocation immediately
+            availableTrust: currentUser.availableTrust - trustAllocation,
+            allocatedTrust: currentUser.allocatedTrust + trustAllocation,
             // Legacy fields for compatibility
             availableInvites: { decrement: 1 },
             totalInvitesUsed: { increment: 1 }

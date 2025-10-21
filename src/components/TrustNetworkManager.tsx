@@ -358,10 +358,9 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       member.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                      member.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
                       'bg-blue-100 text-blue-800'
                     }`}>
-                      {member.status === 'INVITED' ? 'Invitation Sent' : member.status}
+                      {member.status === 'INVITED' ? 'Invitation Sent' : 'In Network'}
                     </span>
                   </div>
                 </div>
@@ -390,19 +389,14 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
                     max="100"
                     value={allocations[member.id] || 0}
                     onChange={(e) => handleAllocationChange(member.id, parseInt(e.target.value) || 0)}
-                    disabled={member.status !== 'CONFIRMED'}
-                    className="w-16 px-2 py-1 text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed"
+                    disabled={false}
+                    className="w-16 px-2 py-1 text-center border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-indigo-500"
                   />
                 </div>
               </div>
-              {member.status === 'PENDING' && (
-                <p className="text-xs text-amber-600 mt-2 ml-0">
-                  ⏳ Pending confirmation - trust will be allocated after they accept
-                </p>
-              )}
               {member.status === 'INVITED' && (
                 <p className="text-xs text-blue-600 mt-2 ml-0">
-                  📧 Invitation sent - trust will be allocated after they join and accept
+                  📧 Invitation sent - they'll be in your network when they join
                 </p>
               )}
             </div>
