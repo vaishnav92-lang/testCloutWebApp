@@ -64,11 +64,9 @@ export async function POST(request: NextRequest) {
       where: { email: delegateEmail }
     })
 
-    if (delegateUser) {
-      // User is already on Clout - send internal notification
-      // TODO: Create a notification/message system for existing users
-      // For now, we'll just log this and send them an email
-    } else {
+    const isExistingUser = !!delegateUser
+
+    if (!isExistingUser) {
       // User is not on Clout - create invitation
       const existingInvitation = await prisma.invitation.findFirst({
         where: {
@@ -87,9 +85,32 @@ export async function POST(request: NextRequest) {
           }
         })
       }
+    } else {
+      // Check if they're in the network
+      const relationship = await prisma.relationship.findFirst({
+        where: {
+          OR: [
+            { userId: currentUser.id, connectedUserId: delegateUser.id },
+            { userId: delegateUser.id, connectedUserId: currentUser.id }
+          ]
+        }
+      })
+
+      // If not in network, optionally create a pending relationship
+      if (!relationship) {
+        await prisma.relationship.create({
+          data: {
+            userId: currentUser.id,
+            connectedUserId: delegateUser.id,
+            trustAllocation: 10,
+            status: 'PENDING',
+            endorserEmail: currentUser.email
+          }
+        })
+      }
     }
 
-    // Send delegation email
+    // Send delegation email with appropriate content
     try {
       await sendDelegationEmail({
         recipientEmail: delegateEmail,
@@ -97,7 +118,9 @@ export async function POST(request: NextRequest) {
         delegatorName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
         jobTitle: job.title,
         companyName: job.company.name,
-        message: message
+        message: message,
+        jobId: jobId,
+        isExistingUser: isExistingUser
       })
     } catch (emailError) {
       console.error('Failed to send delegation email:', emailError)

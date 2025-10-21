@@ -33,6 +33,8 @@ interface DelegationEmailData {
   jobTitle: string
   companyName: string
   message: string
+  jobId?: string
+  isExistingUser?: boolean
 }
 
 interface NetworkInvitationEmailData {
@@ -218,7 +220,10 @@ export async function sendJobReferralEmail(data: JobReferralEmailData) {
 export async function sendDelegationEmail(data: DelegationEmailData) {
   const resend = getResend()
 
-  const signupLink = `${BASE_URL}/join`
+  // Different links for existing vs new users
+  const actionLink = data.isExistingUser && data.jobId
+    ? `${BASE_URL}/jobs/${data.jobId}/refer`
+    : `${BASE_URL}/join`
 
   const html = `
     <!DOCTYPE html>
@@ -271,14 +276,23 @@ export async function sendDelegationEmail(data: DelegationEmailData) {
             </p>
 
             <div style="text-align: center; margin: 30px 0;">
-              <a href="${signupLink}" class="button">Join Clout to Make a Referral</a>
+              <a href="${actionLink}" class="button">
+                ${data.isExistingUser ? 'Help Find Candidates' : 'Join Clout to Make a Referral'}
+              </a>
             </div>
 
-            <p style="color: #6b7280; font-size: 14px;">
-              <strong>About Clout Careers:</strong> We're a trusted professional network where members
-              refer exceptional talent for opportunities. By joining, you can help ${data.delegatorName}
-              find the right person while building your own professional network.
-            </p>
+            ${data.isExistingUser ? `
+              <p style="color: #6b7280; font-size: 14px;">
+                <strong>You're already a Clout member!</strong> Click the button above to review this opportunity
+                and refer someone from your network if you know a good fit.
+              </p>
+            ` : `
+              <p style="color: #6b7280; font-size: 14px;">
+                <strong>About Clout Careers:</strong> We're a trusted professional network where members
+                refer exceptional talent for opportunities. By joining, you can help ${data.delegatorName}
+                find the right person while building your own professional network.
+              </p>
+            `}
 
             <p style="color: #6b7280; font-size: 14px; margin-top: 30px; padding-top: 20px; border-top: 1px solid #e5e7eb;">
               This referral request was sent to you by ${data.delegatorName} through Clout Careers.
