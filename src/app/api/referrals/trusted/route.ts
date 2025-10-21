@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { sendJobReferralEmail } from '@/lib/email-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -126,10 +127,22 @@ export async function POST(request: NextRequest) {
 
     console.log('Endorsement created successfully:', endorsement.id)
 
-    // TODO: Send notification emails to:
-    // 1. The referred person (about the opportunity)
-    // 2. The hiring manager (about the referral)
-    // 3. Optional: Confirmation to the referrer
+    // Send notification email to the referred person
+    try {
+      await sendJobReferralEmail({
+        recipientEmail: referredUser.email,
+        recipientName: `${referredUser.firstName} ${referredUser.lastName}`.trim() || referredUser.email,
+        referrerName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+        jobTitle: job.title,
+        companyName: job.company.name,
+        referralReason: referralReason,
+        personalMessage: message
+      })
+    } catch (emailError) {
+      console.error('Failed to send job referral email:', emailError)
+    }
+
+    // TODO: Send notification to hiring manager (requires additional setup)
 
     return NextResponse.json({
       message: 'Referral submitted successfully',

@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { sendDelegationEmail } from '@/lib/email-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,13 +89,20 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // TODO: Send delegation email
-    // The email should include:
-    // 1. Greeting from the referrer
-    // 2. Information about the job opportunity
-    // 3. Request to help find candidates
-    // 4. Custom message from the referrer
-    // 5. If not on Clout, invitation to join
+    // Send delegation email
+    try {
+      await sendDelegationEmail({
+        recipientEmail: delegateEmail,
+        recipientName: delegateName,
+        delegatorName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+        jobTitle: job.title,
+        companyName: job.company.name,
+        message: message
+      })
+    } catch (emailError) {
+      console.error('Failed to send delegation email:', emailError)
+      // Don't fail the whole operation if email fails
+    }
 
     return NextResponse.json({
       message: 'Referral delegation sent successfully'

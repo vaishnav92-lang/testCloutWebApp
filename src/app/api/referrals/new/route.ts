@@ -9,6 +9,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { sendInvitationEmail, sendJobReferralEmail } from '@/lib/email-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -116,6 +117,21 @@ export async function POST(request: NextRequest) {
         console.log(`User ${candidateEmail} was added to ${currentUser.email}'s network during referral`)
       }
 
+      // Send referral email to existing user
+      try {
+        await sendJobReferralEmail({
+          recipientEmail: candidateEmail,
+          recipientName: candidateName,
+          referrerName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+          jobTitle: job.title,
+          companyName: job.company.name,
+          referralReason: referralReason,
+          personalMessage: message
+        })
+      } catch (emailError) {
+        console.error('Failed to send job referral email:', emailError)
+      }
+
       return NextResponse.json({
         message: 'Referral submitted successfully',
         endorsementId: endorsement.id,
@@ -179,12 +195,27 @@ export async function POST(request: NextRequest) {
       }
     })
 
-    // TODO: Send invitation email with job context
-    // The email should include:
-    // 1. Invitation to join Clout
-    // 2. Information about the job opportunity
-    // 3. Why they were referred (referralReason)
-    // 4. Who referred them
+    // Send invitation email with job context
+    try {
+      await sendInvitationEmail({
+        recipientEmail: candidateEmail,
+        senderName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+        inviteCode: invitation.id
+      })
+
+      // Also send job referral email
+      await sendJobReferralEmail({
+        recipientEmail: candidateEmail,
+        recipientName: candidateName,
+        referrerName: `${currentUser.firstName} ${currentUser.lastName}`.trim() || currentUser.email,
+        jobTitle: job.title,
+        companyName: job.company.name,
+        referralReason: referralReason,
+        personalMessage: message
+      })
+    } catch (emailError) {
+      console.error('Failed to send invitation/referral emails:', emailError)
+    }
 
     return NextResponse.json({
       message: 'Invitation and referral sent successfully',

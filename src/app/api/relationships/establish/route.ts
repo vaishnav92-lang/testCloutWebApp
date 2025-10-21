@@ -17,6 +17,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { getResend } from '@/lib/resend'
+import { sendInvitationEmail, sendNetworkInvitationEmail } from '@/lib/email-service'
 import { authOptions } from '@/lib/auth'
 
 export async function POST(request: NextRequest) {
@@ -128,30 +129,17 @@ export async function POST(request: NextRequest) {
       })
 
       // VALIDATION EMAIL (for existing users)
-      // Send email asking them to accept/decline the relationship
-      // NOTE: Trust score is NOT disclosed for privacy
-      const resend = getResend()
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM!,
-        to: email,
-        subject: `${senderName} invites you to be part of their trusted circle on Clout`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4f46e5;">Relationship Validation Request</h2>
-            <p>${session.user.email} wants to add you to their trusted professional network on Clout Careers.</p>
-            <p>Building trusted professional connections helps create better opportunities for everyone.</p>
-            <div style="text-align: center; margin: 30px 0;">
-              <a href="${process.env.NEXTAUTH_URL}/api/auth/signin/email?email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent('/relationships/validate/' + relationship.id)}"
-                 style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                Validate Relationship
-              </a>
-            </div>
-            <p style="color: #666; font-size: 14px;">
-              This will allow you to confirm the professional relationship.
-            </p>
-          </div>
-        `,
-      })
+      // Send email notifying them they've been added to a trusted network
+      try {
+        await sendNetworkInvitationEmail({
+          recipientEmail: email,
+          senderName: senderName,
+          trustPoints: trustAllocation
+        })
+      } catch (emailError) {
+        console.error('Failed to send network invitation email:', emailError)
+        // Don't fail the whole operation if email fails
+      }
 
       // Note: No trust computation needed since pending relationships don't affect trust scores
 
@@ -233,53 +221,16 @@ export async function POST(request: NextRequest) {
       })
 
       // Send invitation email (outside transaction to avoid long-running operations)
-      const resend = getResend()
-      await resend.emails.send({
-        from: process.env.EMAIL_FROM!,
-        to: email,
-        subject: `${senderName} invites you to be part of their trusted circle on Clout`,
-        html: `
-          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-            <h2 style="color: #4f46e5;">Join Clout Careers</h2>
-            <p>${session.user.email} has invited you to join Clout Careers, a professional referral network.</p>
-            <p>Join a trusted community where professional connections lead to meaningful opportunities.</p>
-
-            <div style="background: #f3f4f6; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="margin-top: 0;">Option 1: Quick Join (Expires in 24 hours)</h3>
-              <p>Click below for instant access with a magic link:</p>
-              <div style="text-align: center;">
-                <a href="${process.env.NEXTAUTH_URL}/api/auth/signin/email?email=${encodeURIComponent(email)}&callbackUrl=${encodeURIComponent('/onboard?invitation=' + result.invitation.id)}"
-                   style="background-color: #4f46e5; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; display: inline-block;">
-                  Join Now with Magic Link
-                </a>
-              </div>
-              <p style="font-size: 12px; color: #666; margin-top: 10px;">
-                ⚡ One-click access, no password needed
-              </p>
-            </div>
-
-            <div style="background: #f9fafb; padding: 20px; border-radius: 8px; margin: 20px 0;">
-              <h3 style="margin-top: 0;">Option 2: Join Anytime</h3>
-              <p>Save this link to join whenever you're ready:</p>
-              <div style="background: white; padding: 10px; border: 1px solid #e5e7eb; border-radius: 4px; word-break: break-all;">
-                <code>${process.env.NEXTAUTH_URL}/join?invitation=${result.invitation.id}</code>
-              </div>
-              <p style="font-size: 12px; color: #666; margin-top: 10px;">
-                🔒 This link never expires
-              </p>
-            </div>
-
-            <p style="color: #666; font-size: 14px;">
-              Once you join, you'll be able to complete your profile and start building your professional network.
-            </p>
-
-            <hr style="border: none; border-top: 1px solid #eee; margin: 30px 0;" />
-            <p style="color: #999; font-size: 12px;">
-              Clout Careers - Building Trust-Based Professional Networks
-            </p>
-          </div>
-        `,
-      })
+      try {
+        await sendInvitationEmail({
+          recipientEmail: email,
+          senderName: senderName,
+          inviteCode: result.invitation.id
+        })
+      } catch (emailError) {
+        console.error('Failed to send invitation email:', emailError)
+        // Don't fail the whole operation if email fails
+      }
 
       // Note: No trust computation needed since pending relationships don't affect trust scores
 
