@@ -17,6 +17,9 @@ function JoinContent() {
   useEffect(() => {
     if (invitationId) {
       fetchInvitation()
+    } else {
+      // No invitation ID, set loading to false for general signup
+      setLoading(false)
     }
   }, [invitationId])
 
@@ -42,9 +45,10 @@ function JoinContent() {
     setLoading(true)
 
     // Sign in with email - this will send a magic link
+    const callbackUrl = invitationId ? `/onboard?invitation=${invitationId}` : '/onboard'
     const result = await signIn('email', {
       email: email,
-      callbackUrl: `/onboard?invitation=${invitationId}`,
+      callbackUrl,
       redirect: false
     })
 
@@ -59,7 +63,9 @@ function JoinContent() {
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading invitation...</div>
+        <div className="text-lg">
+          {invitationId ? 'Loading invitation...' : 'Loading...'}
+        </div>
       </div>
     )
   }
@@ -72,16 +78,24 @@ function JoinContent() {
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
               Join Clout Careers
             </h1>
-            {invitation && (
+            {invitation ? (
               <p className="text-gray-600">
                 You've been invited by <strong>{invitation.senderEmail}</strong>
                 <br />
                 with a trust score of <strong>{invitation.trustScore}/10</strong>
               </p>
+            ) : invitationId ? (
+              <div className="text-center text-red-600">
+                {message || 'Invalid invitation link'}
+              </div>
+            ) : (
+              <p className="text-gray-600">
+                Join our trusted professional referral network
+              </p>
             )}
           </div>
 
-          {!invitation ? (
+          {invitationId && !invitation ? (
             <div className="text-center text-red-600">
               {message || 'Invalid invitation link'}
             </div>
@@ -94,12 +108,23 @@ function JoinContent() {
                 <input
                   type="email"
                   value={email}
-                  readOnly
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm bg-gray-50 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  onChange={(e) => setEmail(e.target.value)}
+                  readOnly={!!invitation}
+                  required
+                  className={`w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                    invitation ? 'bg-gray-50' : 'bg-white'
+                  }`}
+                  placeholder={invitation ? '' : 'Enter your email address'}
                 />
-                <p className="text-xs text-gray-500 mt-1">
-                  This email was invited to join the platform
-                </p>
+                {invitation ? (
+                  <p className="text-xs text-gray-500 mt-1">
+                    This email was invited to join the platform
+                  </p>
+                ) : (
+                  <p className="text-xs text-gray-500 mt-1">
+                    We'll send you a magic link to join
+                  </p>
+                )}
               </div>
 
               <div className="bg-blue-50 border border-blue-200 rounded-md p-4">
@@ -110,7 +135,11 @@ function JoinContent() {
                   <br />
                   2. You'll complete your profile
                   <br />
-                  3. You can set your own trust score for {invitation.senderEmail}
+                  {invitation ? (
+                    <>3. You can set your own trust score for {invitation.senderEmail}</>
+                  ) : (
+                    <>3. You can start building your professional network</>
+                  )}
                 </p>
               </div>
 
