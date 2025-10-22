@@ -10,6 +10,7 @@ import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
 import { sendDelegationEmail } from '@/lib/email-service'
+import { forwardJob } from '@/lib/referral-chain'
 
 export async function POST(request: NextRequest) {
   try {
@@ -86,6 +87,16 @@ export async function POST(request: NextRequest) {
         })
       }
     } else {
+      // User is on platform - record the forward in chain tracking
+      try {
+        await forwardJob(jobId, currentUser.id, delegateUser.id, message)
+      } catch (forwardError: any) {
+        // If forward already exists, that's okay - just continue
+        if (!forwardError.message?.includes('duplicate')) {
+          throw forwardError
+        }
+      }
+
       // Check if they're in the network
       const relationship = await prisma.relationship.findFirst({
         where: {

@@ -80,6 +80,12 @@ model User {
   trustAllocationsReceived TrustAllocation[]   @relation("TrustReceiver")
   computedTrustScore       ComputedTrustScore?
 
+  // Referral chain relations
+  forwardsSent       JobForward[] @relation("ForwardsSent")
+  forwardsReceived   JobForward[] @relation("ForwardsReceived")
+  referralsMade      Referral[]   @relation("ReferralsMade")
+  referralsAsCandidate Referral[] @relation("ReferralsAsCandidate")
+
   @@map("users")
 }
 
@@ -209,6 +215,8 @@ model Job {
   endorsementReleases  EndorsementRelease[]
   endorsements         Endorsement[]
   applications         JobApplication[]
+  forwards             JobForward[]
+  referrals            Referral[]
   company              Company               @relation(fields: [companyId], references: [id])
   owner                User                  @relation(fields: [ownerId], references: [id])
 
@@ -334,6 +342,54 @@ model Introduction {
 
   @@unique([personAId, personBId])
   @@map("introductions")
+}
+
+model JobForward {
+  id         String   @id @default(cuid())
+  jobId      String
+  fromNodeId String
+  toNodeId   String
+  message    String?  // Optional message included with forward
+  createdAt  DateTime @default(now())
+
+  job      Job  @relation(fields: [jobId], references: [id])
+  fromNode User @relation("ForwardsSent", fields: [fromNodeId], references: [id])
+  toNode   User @relation("ForwardsReceived", fields: [toNodeId], references: [id])
+
+  @@unique([jobId, fromNodeId, toNodeId])
+  @@index([jobId, toNodeId])
+  @@map("job_forwards")
+}
+
+model Referral {
+  id              String         @id @default(cuid())
+  jobId           String
+  candidateId     String
+  candidateEmail  String
+  referrerNodeId  String
+
+  // Materialized chain: ordered array of node IDs from start to referrer
+  chainPath       String[]       // Array of user IDs
+  chainDepth      Int           // Length of chain - 1
+
+  // Referral details
+  howYouKnow      String?
+  confidenceLevel String?       // high, medium, low
+  notes           String?
+
+  status          ReferralStatus @default(PENDING)
+
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  job           Job   @relation(fields: [jobId], references: [id])
+  candidate     User? @relation("ReferralsAsCandidate", fields: [candidateId], references: [id])
+  referrerNode  User  @relation("ReferralsMade", fields: [referrerNodeId], references: [id])
+
+  @@unique([jobId, candidateEmail])
+  @@index([jobId])
+  @@index([status])
+  @@map("referrals")
 }
 
 model SystemConfig {
@@ -469,6 +525,14 @@ enum IntroductionStatus {
   PENDING
   ESTABLISHED
   INACTIVE
+}
+
+enum ReferralStatus {
+  PENDING
+  SCREENING
+  INTERVIEWING
+  HIRED
+  REJECTED
 }
 
 // =============== EIGENTRUST TABLES ===============
