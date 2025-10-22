@@ -10,6 +10,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
+import PotentialEarningsPreview from '@/components/PotentialEarningsPreview'
+import { reconstructChain } from '@/lib/referral-chain'
 
 interface Job {
   id: string
@@ -51,6 +53,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
   const [job, setJob] = useState<Job | null>(null)
   const [trustedContacts, setTrustedContacts] = useState<TrustedContact[]>([])
   const [loading, setLoading] = useState(true)
+  const [currentChainLength, setCurrentChainLength] = useState(0)
   const searchParams = useSearchParams()
   const [mode, setMode] = useState<'refer' | 'delegate'>(
     searchParams.get('mode') === 'delegate' ? 'delegate' : 'refer'
@@ -101,6 +104,18 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
             .filter((conn: any) => conn.status === 'CONFIRMED')
             .map((conn: any) => conn.connectedUser)
           setTrustedContacts(contacts)
+        }
+
+        // Fetch current chain length for user
+        if (session?.user?.id) {
+          try {
+            const chainPath = await reconstructChain(params.id, session.user.id)
+            setCurrentChainLength(chainPath.length)
+          } catch (error) {
+            console.error('Error reconstructing chain:', error)
+            // If chain reconstruction fails, assume user is at root (length 0)
+            setCurrentChainLength(0)
+          }
         }
       } catch (error) {
         console.error('Error fetching data:', error)
@@ -374,6 +389,17 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
             </p>
           </div>
         </div>
+
+        {/* Potential Earnings Preview */}
+        {job?.referralBudget && (
+          <PotentialEarningsPreview
+            totalBudget={job.referralBudget}
+            currentChainLength={currentChainLength}
+            showForward={mode === 'delegate'}
+            showDirectReferral={mode === 'refer'}
+            className="mb-6"
+          />
+        )}
 
         {/* Form Content */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">

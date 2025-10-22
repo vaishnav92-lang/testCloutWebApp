@@ -128,6 +128,52 @@ export async function testEdgeCases() {
   }
 }
 
+export async function testNewPaymentModel() {
+  console.log('\n🧪 Testing New Payment Model (70/30 Split)...\n')
+
+  try {
+    const aliceId = 'alice-user-id'
+    const bobId = 'bob-user-id'
+    const carolId = 'carol-user-id'
+
+    // Test 1: Single person (100%)
+    console.log('1. Testing single person referral (should get 100%)...')
+    const singleChain = [aliceId]
+    const singleSplits = await calculatePaymentSplits(10000, singleChain)
+    console.log('   Chain:', singleChain)
+    console.log('   Splits:', singleSplits.map(s => `${s.name}: $${s.amount}`))
+
+    // Test 2: Two person chain (70/30)
+    console.log('\n2. Testing two person chain (70% direct, 30% chain)...')
+    const twoChain = [aliceId, bobId]
+    const twoSplits = await calculatePaymentSplits(10000, twoChain)
+    console.log('   Chain:', twoChain)
+    console.log('   Splits:', twoSplits.map(s => `${s.name}: $${s.amount}`))
+
+    // Test 3: Three person chain (70% direct, 30% split between 2)
+    console.log('\n3. Testing three person chain (70% direct, 15% each chain member)...')
+    const threeChain = [aliceId, bobId, carolId]
+    const threeSplits = await calculatePaymentSplits(10000, threeChain)
+    console.log('   Chain:', threeChain)
+    console.log('   Splits:', threeSplits.map(s => `${s.name}: $${s.amount}`))
+
+    // Verify totals
+    const total1 = singleSplits.reduce((sum, s) => sum + s.amount, 0)
+    const total2 = twoSplits.reduce((sum, s) => sum + s.amount, 0)
+    const total3 = threeSplits.reduce((sum, s) => sum + s.amount, 0)
+
+    console.log('\n4. Verifying totals...')
+    console.log(`   Single: $${total1} (should be $10,000)`)
+    console.log(`   Two: $${total2} (should be $10,000)`)
+    console.log(`   Three: $${total3} (should be $10,000)`)
+
+    console.log('\n✅ New payment model tests completed!')
+
+  } catch (error) {
+    console.error('❌ Payment model test failed:', error)
+  }
+}
+
 // Example usage:
 // import { testReferralChain, testEdgeCases } from '@/lib/test-referral-chain'
 // await testReferralChain()

@@ -254,10 +254,10 @@ export async function createReferral(
 }
 
 /**
- * Calculates payment distribution across a referral chain using inverse square law
+ * Calculates payment distribution across a referral chain using 70/30 split model
  *
- * The direct referrer (last in chain) gets the most, with amount decreasing
- * by inverse square of distance from the hire.
+ * - Direct referrer (last in chain) gets minimum 70% (100% if alone)
+ * - Everyone else in chain shares remaining 30% equally
  *
  * @param totalAmount - Total payment to distribute (e.g., 10000)
  * @param chainPath - Array of node IDs from start to referrer
@@ -270,17 +270,6 @@ export async function calculatePaymentSplits(
   if (chainPath.length === 0) {
     return []
   }
-
-  const n = chainPath.length
-
-  // Calculate inverse square weights (closest = highest weight)
-  const weights = chainPath.map((_, index) => {
-    const distanceFromHire = n - index // 1 for closest, n for furthest
-    return 1 / Math.pow(distanceFromHire, 2)
-  })
-
-  // Normalize weights to sum to 1
-  const sumWeights = weights.reduce((sum, w) => sum + w, 0)
 
   // Get user names for display
   const users = await prisma.user.findMany({
@@ -297,17 +286,89 @@ export async function calculatePaymentSplits(
 
   const userMap = new Map(users.map(u => [u.id, u]))
 
+  const n = chainPath.length
+
+  if (n === 1) {
+    // Direct referral - gets 100%
+    const user = userMap.get(chainPath[0])
+    const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown'
+
+    return [{
+      nodeId: chainPath[0],
+      name,
+      amount: totalAmount
+    }]
+  }
+
+  // Chain referral - 70/30 split
+  const directReferrerAmount = Math.round(totalAmount * 0.7) // 70% to direct referrer
+  const chainAmount = totalAmount - directReferrerAmount // Remaining 30%
+  const chainMemberAmount = Math.round(chainAmount / (n - 1)) // Split equally among chain members
+
   // Calculate splits
   return chainPath.map((nodeId, index) => {
     const user = userMap.get(nodeId)
     const name = user ? `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email : 'Unknown'
 
+    const isDirectReferrer = index === n - 1 // Last person in chain
+    const amount = isDirectReferrer ? directReferrerAmount : chainMemberAmount
+
     return {
       nodeId,
       name,
-      amount: Math.round((weights[index] / sumWeights) * totalAmount)
+      amount
     }
   })
+}
+
+/**
+ * Calculates maximum possible payout for a person based on their position in chain
+ * when they make a forward or direct referral
+ *
+ * @param totalAmount - Total job referral budget
+ * @param currentChainLength - Current length of chain leading to this person
+ * @param isDirectReferral - Whether this person is making a direct referral (vs forward)
+ * @returns Object with max payout information
+ */
+export function calculateMaxPayout(
+  totalAmount: number,
+  currentChainLength: number,
+  isDirectReferral: boolean = false
+) {
+  if (isDirectReferral) {
+    // If making direct referral, they become the direct referrer
+    const newChainLength = currentChainLength + 1
+
+    if (newChainLength === 1) {
+      // They're the only one - gets 100%
+      return {
+        maxAmount: totalAmount,
+        percentage: 100,
+        role: 'Direct Referrer (Solo)',
+        chainLength: newChainLength
+      }
+    } else {
+      // They're direct referrer in a chain - gets 70%
+      return {
+        maxAmount: Math.round(totalAmount * 0.7),
+        percentage: 70,
+        role: 'Direct Referrer',
+        chainLength: newChainLength
+      }
+    }
+  } else {
+    // If forwarding, they become a chain member (not direct referrer)
+    const newChainLength = currentChainLength + 2 // +1 for them, +1 for eventual referrer
+    const chainAmount = Math.round(totalAmount * 0.3) // 30% split among chain
+    const maxAmount = Math.round(chainAmount / (newChainLength - 1)) // Split among chain members
+
+    return {
+      maxAmount,
+      percentage: Math.round((maxAmount / totalAmount) * 100),
+      role: 'Chain Member',
+      chainLength: newChainLength
+    }
+  }
 }
 
 /**

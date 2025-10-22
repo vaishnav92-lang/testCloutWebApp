@@ -114,6 +114,17 @@ export default function ReferralChainViewer({ jobId }: ReferralChainViewerProps)
     }
   }
 
+  const getStatusDisplayName = (status: string) => {
+    switch (status) {
+      case 'PENDING': return 'Awaiting Response'
+      case 'SCREENING': return 'Interview Scheduled'
+      case 'INTERVIEWING': return 'Interviewing'
+      case 'HIRED': return 'Hired'
+      case 'REJECTED': return 'Rejected'
+      default: return status
+    }
+  }
+
   const getConfidenceColor = (level: string) => {
     switch (level) {
       case 'high': return 'text-green-600'
@@ -179,7 +190,7 @@ export default function ReferralChainViewer({ jobId }: ReferralChainViewerProps)
               </div>
               <div className="flex items-center gap-2">
                 <span className={`px-2 py-1 text-xs rounded-full ${getStatusColor(referral.status)}`}>
-                  {referral.status}
+                  {getStatusDisplayName(referral.status)}
                 </span>
                 <span className={`text-sm font-medium ${getConfidenceColor(referral.confidenceLevel)}`}>
                   {referral.confidenceLevel} confidence
@@ -227,11 +238,11 @@ export default function ReferralChainViewer({ jobId }: ReferralChainViewerProps)
                 onChange={(e) => updateReferralStatus(referral.id, e.target.value)}
                 className="px-3 py-1 text-sm border border-gray-300 rounded"
               >
-                <option value="PENDING">Pending</option>
-                <option value="SCREENING">Screening</option>
+                <option value="PENDING">Awaiting Response</option>
+                <option value="REJECTED">Rejected</option>
+                <option value="SCREENING">Interview Scheduled</option>
                 <option value="INTERVIEWING">Interviewing</option>
                 <option value="HIRED">Hired</option>
-                <option value="REJECTED">Rejected</option>
               </select>
 
               {referral.status === 'HIRED' && (
@@ -250,19 +261,35 @@ export default function ReferralChainViewer({ jobId }: ReferralChainViewerProps)
                 <div className="font-medium text-gray-900 mb-2">
                   Payment Distribution (${paymentAmount.toLocaleString()})
                 </div>
+                <div className="text-xs text-gray-600 mb-3">
+                  Direct referrer gets 70% • Chain members share 30% equally
+                </div>
                 <div className="space-y-1">
                   {paymentSplits.map((split, index) => {
                     const position = paymentSplits.length - index
                     const percentage = ((split.amount / paymentAmount) * 100).toFixed(1)
+                    const isDirectReferrer = index === paymentSplits.length - 1
                     return (
                       <div key={split.nodeId} className="flex justify-between text-sm">
-                        <span>{split.name} (position {position})</span>
+                        <span className="flex items-center gap-2">
+                          {split.name}
+                          <span className={`px-2 py-0.5 text-xs rounded ${
+                            isDirectReferrer
+                              ? 'bg-green-100 text-green-700'
+                              : 'bg-blue-100 text-blue-700'
+                          }`}>
+                            {isDirectReferrer ? 'Direct Referrer' : 'Chain Member'}
+                          </span>
+                        </span>
                         <span className="font-medium">
                           ${split.amount.toLocaleString()} ({percentage}%)
                         </span>
                       </div>
                     )
                   })}
+                </div>
+                <div className="mt-2 pt-2 border-t border-gray-200 text-xs text-gray-500">
+                  Total: ${paymentSplits.reduce((sum, split) => sum + split.amount, 0).toLocaleString()}
                 </div>
               </div>
             )}
