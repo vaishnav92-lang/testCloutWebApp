@@ -83,6 +83,8 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
+  const [selectedTrustedContact, setSelectedTrustedContact] = useState<string | null>(null)
+  const [selectedDelegateContact, setSelectedDelegateContact] = useState<string | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -135,12 +137,24 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
   }
 
   const handleContactSelect = (contactId: string) => {
+    if (!contactId) {
+      // Clear selection
+      setSelectedTrustedContact(null)
+      setFormData(prev => ({
+        ...prev,
+        candidateName: '',
+        candidateEmail: ''
+      }))
+      return
+    }
+
     const contact = trustedContacts.find(c => c.id === contactId)
     if (contact) {
       const displayName = contact.firstName && contact.lastName
         ? `${contact.firstName} ${contact.lastName}`
         : contact.firstName || contact.lastName || contact.email
 
+      setSelectedTrustedContact(contactId)
       setFormData(prev => ({
         ...prev,
         candidateName: displayName,
@@ -150,12 +164,24 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
   }
 
   const handleDelegateContactSelect = (contactId: string) => {
+    if (!contactId) {
+      // Clear selection
+      setSelectedDelegateContact(null)
+      setDelegateForm(prev => ({
+        ...prev,
+        delegateName: '',
+        delegateEmail: ''
+      }))
+      return
+    }
+
     const contact = trustedContacts.find(c => c.id === contactId)
     if (contact) {
       const displayName = contact.firstName && contact.lastName
         ? `${contact.firstName} ${contact.lastName}`
         : contact.firstName || contact.lastName || contact.email
 
+      setSelectedDelegateContact(contactId)
       setDelegateForm(prev => ({
         ...prev,
         delegateName: displayName,
@@ -353,7 +379,10 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
           <div className="flex items-center justify-center space-x-4">
             <button
               type="button"
-              onClick={() => setMode('refer')}
+              onClick={() => {
+                setMode('refer')
+                setSelectedDelegateContact(null)
+              }}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 mode === 'refer'
                   ? 'bg-green-600 text-white'
@@ -367,7 +396,10 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
             </button>
             <button
               type="button"
-              onClick={() => setMode('delegate')}
+              onClick={() => {
+                setMode('delegate')
+                setSelectedTrustedContact(null)
+              }}
               className={`px-6 py-3 rounded-lg font-medium transition-colors ${
                 mode === 'delegate'
                   ? 'bg-purple-600 text-white'
@@ -414,8 +446,8 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                     </label>
                     <select
                       onChange={(e) => handleContactSelect(e.target.value)}
+                      value={selectedTrustedContact || ''}
                       className="w-full px-3 py-2 border border-blue-300 rounded-md focus:outline-none focus:ring-blue-500 focus:border-blue-500 bg-white"
-                      defaultValue=""
                     >
                       <option value="">Select a trusted contact...</option>
                       {trustedContacts.map((contact) => {
@@ -430,12 +462,30 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                       })}
                     </select>
                     <p className="text-xs text-blue-700 mt-1">
-                      Selecting someone will auto-fill their name and email below
+                      {selectedTrustedContact
+                        ? '✓ Name and email fields are locked to prevent errors'
+                        : 'Selecting someone will auto-fill and lock their name and email below'}
                     </p>
                   </div>
                 )}
 
             {/* Person Being Referred */}
+            {selectedTrustedContact && (
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-yellow-800">
+                    <span className="font-medium">🔒 Using trusted contact details</span> - Fields are locked for data integrity
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => handleContactSelect('')}
+                    className="text-xs text-yellow-600 hover:text-yellow-800 underline"
+                  >
+                    Clear selection
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
@@ -446,7 +496,12 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                   required
                   value={formData.candidateName}
                   onChange={(e) => handleInputChange('candidateName', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={!!selectedTrustedContact}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                    selectedTrustedContact
+                      ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+                      : 'border-gray-300'
+                  }`}
                   placeholder="John Doe"
                 />
               </div>
@@ -459,7 +514,12 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                   required
                   value={formData.candidateEmail}
                   onChange={(e) => handleInputChange('candidateEmail', e.target.value)}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                  disabled={!!selectedTrustedContact}
+                  className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 ${
+                    selectedTrustedContact
+                      ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+                      : 'border-gray-300'
+                  }`}
                   placeholder="john@company.com"
                 />
               </div>
@@ -628,8 +688,8 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                       </label>
                       <select
                         onChange={(e) => handleDelegateContactSelect(e.target.value)}
+                        value={selectedDelegateContact || ''}
                         className="w-full px-3 py-2 border border-purple-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 bg-white"
-                        defaultValue=""
                       >
                         <option value="">Select a trusted contact...</option>
                         {trustedContacts.map((contact) => {
@@ -644,8 +704,27 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                         })}
                       </select>
                       <p className="text-xs text-purple-700 mt-1">
-                        Selecting someone will auto-fill their name and email below
+                        {selectedDelegateContact
+                          ? '✓ Name and email fields are locked to prevent errors'
+                          : 'Selecting someone will auto-fill and lock their name and email below'}
                       </p>
+                    </div>
+                  )}
+
+                  {selectedDelegateContact && (
+                    <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-3 mb-4">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm text-yellow-800">
+                          <span className="font-medium">🔒 Using trusted contact details</span> - Fields are locked for data integrity
+                        </span>
+                        <button
+                          type="button"
+                          onClick={() => handleDelegateContactSelect('')}
+                          className="text-xs text-yellow-600 hover:text-yellow-800 underline"
+                        >
+                          Clear selection
+                        </button>
+                      </div>
                     </div>
                   )}
 
@@ -659,7 +738,12 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                         required
                         value={delegateForm.delegateName}
                         onChange={(e) => setDelegateForm(prev => ({ ...prev, delegateName: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                        disabled={!!selectedDelegateContact}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 ${
+                          selectedDelegateContact
+                            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+                            : 'border-gray-300'
+                        }`}
                         placeholder="Jane Smith"
                       />
                     </div>
@@ -672,7 +756,12 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
                         required
                         value={delegateForm.delegateEmail}
                         onChange={(e) => setDelegateForm(prev => ({ ...prev, delegateEmail: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                        disabled={!!selectedDelegateContact}
+                        className={`w-full px-3 py-2 border rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 ${
+                          selectedDelegateContact
+                            ? 'bg-gray-100 border-gray-300 cursor-not-allowed'
+                            : 'border-gray-300'
+                        }`}
                         placeholder="jane@company.com"
                       />
                     </div>
