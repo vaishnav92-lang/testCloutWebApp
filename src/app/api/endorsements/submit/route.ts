@@ -197,7 +197,7 @@ ${recommendation}
       const isNewUser = !endorsedUser
 
       await resend.emails.send({
-        from: 'Clout Careers <noreply@cloutcareers.com>',
+        from: process.env.EMAIL_FROM!,
         to: endorsedEmail,
         subject: `${endorserDisplayName} listed you as one of the top people they've worked with`,
         html: `
