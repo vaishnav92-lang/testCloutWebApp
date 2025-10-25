@@ -7,6 +7,8 @@
 
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth/next'
+import { authOptions } from '@/lib/auth'
 
 export async function GET(
   request: NextRequest,
@@ -47,13 +49,29 @@ export async function GET(
     })
 
     if (!job) {
-      return NextResponse.json({
-        error: 'Job not found'
-      }, { status: 404 })
+      return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    }
+
+    const session = await getServerSession(authOptions)
+    let hasApplied = false
+
+    if (session?.user?.id) {
+      const application = await prisma.jobApplication.findUnique({
+        where: {
+          userId_jobId: {
+            userId: session.user.id,
+            jobId: id,
+          },
+        },
+      })
+      if (application) {
+        hasApplied = true
+      }
     }
 
     return NextResponse.json({
-      job
+      job,
+      hasApplied,
     })
 
   } catch (error) {
