@@ -593,7 +593,7 @@ export default function Dashboard() {
 
                             <div className="flex items-center text-sm text-gray-600">
                               <span className="font-medium">👥</span>
-                              <span className="ml-2">{job._count.applications} applications</span>
+                              <span className="ml-2">{job._count.applications} application{job._count.applications !== 1 ? 's' : ''}</span>
                             </div>
                           </div>
 

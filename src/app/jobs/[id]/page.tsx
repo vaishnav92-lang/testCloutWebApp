@@ -59,6 +59,9 @@ export default function JobDetailPage() {
   const [job, setJob] = useState<JobDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasApplied, setHasApplied] = useState(false)
+  const [isApplying, setIsApplying] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
   const { data: session } = useSession()
   const router = useRouter()
 
@@ -70,6 +73,7 @@ export default function JobDetailPage() {
         if (response.ok) {
           const data = await response.json()
           setJob(data.job)
+          setHasApplied(data.hasApplied)
         } else if (response.status === 404) {
           setError('Job not found')
         } else {
@@ -105,6 +109,45 @@ export default function JobDetailPage() {
     if (min) return `${currency} ${min.toLocaleString()}+`
     if (max) return `Up to ${currency} ${max.toLocaleString()}`
     return 'Competitive'
+  }
+
+
+  const handleApply = async () => {
+    if (!session?.user) {
+      router.push('/api/auth/signin')
+      return
+    }
+
+    setIsApplying(true)
+    setApplyError(null)
+
+    try {
+      const response = await fetch(`/api/jobs/${id}/apply`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setHasApplied(true)
+        setJob(prevJob => {
+          if (!prevJob) return null
+          return {
+            ...prevJob,
+            _count: {
+              ...prevJob._count,
+              applications: prevJob._count.applications + 1,
+            },
+          }
+        })
+      } else {
+        setApplyError(data.error || 'Failed to apply. Please try again.')
+      }
+    } catch (error) {
+      setApplyError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsApplying(false)
+    }
   }
 
   if (loading) {
@@ -203,10 +246,15 @@ export default function JobDetailPage() {
                 </svg>
                 Forward Request
               </button>
-              <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-                Apply Now
+              <button
+                onClick={handleApply}
+                disabled={hasApplied || isApplying}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isApplying ? 'Applying...' : hasApplied ? 'Applied' : 'Apply Now'}
               </button>
             </div>
+            {applyError && <p className="text-red-500 text-sm mt-2 text-right">{applyError}</p>}
           </div>
         </div>
 

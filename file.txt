@@ -1,0 +1,102 @@
+> Ok thanks. I'm getting this.
+
+  Console Error
+
+
+  PrismaClient is unable to run in this browser environment, or has been bundled for the browser (running in ``).
+  If this is unexpected, please open an issue: https://pris.ly/prisma-prisma-bug-report
+
+  src/lib/referral-chain.ts (126:35) @ reconstructChain
+
+
+    124 |   while (true) {
+    125 |     // Find ALL forwards to currentNode for this job
+  > 126 |     const forwards = await prisma.jobForward.findMany({
+        |                                   ^
+    127 |       where: {
+    128 |         jobId,
+    129 |         toNodeId: currentNode
+  Call Stack
+  3
+
+  Show 1 ignore-listed frame(s)
+  reconstructChain
+  src/lib/referral-chain.ts (126:35)
+  JobReferralPage.useEffect.fetchData
+  src/app/jobs/[id]/refer/page.tsx (108:53)
+
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ ✓  ReadFile src/lib/referral-chain.ts                                                                                                           │
+╭─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╮
+│ -  WriteFile Writing to src/reconstruct-chain/route.ts                                                                                          │
+│                                                                                                                                                 │
+│     1                                                                                                                                           │
+│     2 import { NextResponse } from 'next/server'                                                                                                │
+│     3 import { reconstructChain } from '@/lib/referral-chain'                                                                                   │
+│     4 import { getSession } from 'next-auth/react'                                                                                              │
+│     5                                                                                                                                           │
+│     6 export async function POST(request: Request) {                                                                                            │
+│     7   try {                                                                                                                                   │
+│     8     const { jobId, userId } = await request.json()                                                                                        │
+│     9                                                                                                                                           │
+│    10     if (!jobId || !userId) {                                                                                                              │
+│    11       return NextResponse.json({ error: 'jobId and userId are required' }, { status: 400 })                                               │
+│    12     }                                                                                                                                     │
+│    13                                                                                                                                           │
+│    14     const chainPath = await reconstructChain(jobId, userId)                                                                               │
+│    15     return NextResponse.json({ chainPath })                                                                                               │
+│    16   } catch (error) {                                                                                                                       │
+│    17     console.error('Error reconstructing chain:', error)                                                                                   │
+│    18     return NextResponse.json({ error: 'Failed to reconstruct chain' }, { status: 500 })                                                   │
+│    19   }                                                                                                                                       │
+│    20 }                                                                                                                                         │
+╰─────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────────╯
+
+> Talk to me about it.
+
+✦ Of course. The error you're seeing, PrismaClient is unable to run in this browser environment, happens because of a fundamental security and design
+   principle in modern web applications.
+
+  The Problem: Server Code vs. Browser Code
+
+   * Server-Side Code: Your database and tools like Prisma are designed to run securely on a server. The server has protected access to the database.
+   * Client-Side Code: Your React components (like the JobReferralPage) run in the user's web browser. For security reasons, the browser is a
+     restricted environment and is not allowed to connect directly to your database.
+
+  The issue is that the reconstructChain function uses Prisma to talk to the database, but it was being called from inside your JobReferralPage
+  component, which runs in the browser. You can't put server-only code in a file that's imported and used by a client component.
+
+  The Solution: Creating an API Route
+
+  The standard way to solve this is to create a middleman—an API route that runs on the server.
+
+   1. Create an API Endpoint: I'll create a new file at src/app/api/referrals/reconstruct-chain/route.ts. This file will define a server-side endpoint
+       that the browser can safely call.
+   2. Move the Logic: This new endpoint will be responsible for calling the reconstructChain function. Since the API route runs on the server, it can
+      safely use Prisma to query the database.
+   3. Update the Frontend: I will then modify the JobReferralPage component. Instead of calling reconstructChain directly, it will make a network
+      fetch request to our new /api/referrals/reconstruct-chain URL, sending the jobId and userId. The API will then return the result, which the
+      component can use to update its state.
+
+  This separates the client-side presentation logic from the server-side data logic, which fixes the error and follows best practices for building
+  secure and robust Next.js applications.
+
+  Shall I proceed with creating that API route?
+
+> Doesn't it still work?
+
+✦ That's a great question. The application might appear to partially work, but the core functionality is broken, and it's producing incorrect
+  results.
+
+  Here's what's happening:
+
+   1. When the JobReferralPage loads, it tries to call the reconstructChain function.
+   2. That function immediately fails with the Prisma error you saw because it's running in the browser.
+   3. The code you have in src/app/jobs/[id]/refer/page.tsx is written to handle errors. It has a try...catch block.
+   4. When the error is "caught," it logs the error to the console and sets the currentChainLength to a default value of 0.
+
+  So, while the page doesn't crash, it's operating on incorrect data. The PotentialEarningsPreview component, for example, will show the user a
+  potential payout as if they are the first person in the referral chain, even if they are not.
+
+  In short, it doesn't work correctly. The feature is failing silently from a UI perspective, but the logic is not executing, and the information
+  presented to the user is wrong. The only way to fix it is to move the database-dependent code to a server-side API route.
