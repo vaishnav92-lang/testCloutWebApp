@@ -1,704 +1,93 @@
-/**
- * DASHBOARD PAGE COMPONENT
- *
- * This is the main dashboard where users manage their professional network.
- * It serves as the central hub for all relationship and invitation activities.
- *
- * Key Features:
- * - Profile information display and editing access
- * - Relationship establishment form
- * - Network visualization (confirmed, pending, declined relationships)
- * - Pending invitations to new users
- * - Real-time invite count tracking
- * - Job listings display
- * - Success notifications from validation flow
- *
- * Data Flow:
- * 1. Loads user stats (invite counts, tier)
- * 2. Fetches relationships and pending invitations
- * 3. Displays network with proper status indicators
- * 4. Handles new relationship requests
- * 5. Shows validation success notifications
- */
-
 'use client'
 
-import { useSession, signOut } from 'next-auth/react'
-import { useRouter } from 'next/navigation'
+import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
 import EndorsementForm from '@/components/EndorsementForm'
 import EndorsementNotifications from '@/components/EndorsementNotifications'
-import HiringManagerDashboard from '@/components/HiringManagerDashboard'
 import NetworkConnectionsCard from '@/components/NetworkConnectionsCard'
 import CloutJourneyCard from '@/components/CloutJourneyCard'
 import PendingNetworkRequests from '@/components/PendingNetworkRequests'
 import TrustNetworkManager from '@/components/TrustNetworkManager'
-import TrustedContactsSidebar from '@/components/TrustedContactsSidebar'
 
-export default function Dashboard() {
-  // HOOKS AND ROUTING
-  const { data: session, status } = useSession()     // NextAuth session management
-  const router = useRouter()                         // Next.js navigation
-  const searchParams = new URLSearchParams(typeof window !== 'undefined' ? window.location.search : '')  // URL params
-
-  // JOBS STATE
-  const [jobs, setJobs] = useState([])               // Job listings data
-  const [loading, setLoading] = useState(true)       // Jobs loading state
-
-  // RELATIONSHIPS STATE
-  const [relationships, setRelationships] = useState({
-    connections: [],                                  // Array of user relationships
-    counts: { confirmed: 0, pending: 0, declined: 0 }, // Relationship status counts
-    pendingInvitations: []                           // Invitations to new users
-  })
-  const [relationshipsLoading, setRelationshipsLoading] = useState(true)  // Relationships loading state
-
-  // USER STATISTICS STATE
-  const [userStats, setUserStats] = useState({
-    totalTrustPoints: 100,                          // Total trust points (always 100)
-    allocatedTrust: 0,                              // Trust currently allocated
-    availableTrust: 100,                            // Trust available to allocate
-    tier: 'CONNECTOR'                               // User tier (legacy)
-  })
-  const [userStatsLoading, setUserStatsLoading] = useState(true)          // Stats loading state
-
-  // RELATIONSHIP FORM STATE
-  const [relationshipForm, setRelationshipForm] = useState({
-    email: '',                                       // Target user email
-    trustAllocation: 10                              // Trust points to allocate (0-100)
-  })
-  const [relationshipLoading, setRelationshipLoading] = useState(false)   // Form submission state
-  const [relationshipMessage, setRelationshipMessage] = useState('')      // Form success/error message
-
-  // VALIDATION SUCCESS STATE
-  const [validationSuccess, setValidationSuccess] = useState(false)       // Show validation success banner
-
-  // ENDORSEMENTS STATE
-  const [endorsements, setEndorsements] = useState([])                    // Endorsements given by current user
-  const [endorsementsLoading, setEndorsementsLoading] = useState(true)    // Endorsements loading state
-  const [endorsementFormOpen, setEndorsementFormOpen] = useState(false)   // Endorsement form visibility
-
-  // DRAG AND DROP STATE
-  const [draggedContact, setDraggedContact] = useState(null)              // Currently dragged contact
-  const [dropTargetJob, setDropTargetJob] = useState(null)               // Job being dragged over
-  const [jobReferralContext, setJobReferralContext] = useState(null)     // Context for new endorsement form
-
-  // DASHBOARD VIEW STATE
-  const [currentView, setCurrentView] = useState<'node' | 'hiring-manager' | 'jobs'>('node')  // Toggle between dashboards
+export default function DashboardPage() {
+  const { data: session, status } = useSession()
+  const [validationSuccess, setValidationSuccess] = useState(false)
+  const [endorsements, setEndorsements] = useState([])
+  const [endorsementsLoading, setEndorsementsLoading] = useState(true)
+  const [endorsementFormOpen, setEndorsementFormOpen] = useState(false)
 
   useEffect(() => {
-    if (status === 'unauthenticated') {
-      router.push('/auth/signin')
-    }
-  }, [status, router])
-
-  useEffect(() => {
-    console.log('Dashboard useEffect - session:', session)
-    console.log('Dashboard useEffect - status:', status)
-    if (session) {
-      console.log('Fetching data...')
-      fetchJobs()
-      fetchRelationships()
-      fetchUserStats()
+    if (status === 'authenticated') {
       fetchEndorsements()
     }
-  }, [session])
+  }, [status])
 
-  useEffect(() => {
-    // Check if user just completed validation
-    if (searchParams.get('validated') === 'true') {
-      setValidationSuccess(true)
-      // Auto-hide message after 5 seconds
-      setTimeout(() => setValidationSuccess(false), 5000)
-      // Clean up URL
-      router.replace('/dashboard', { scroll: false })
-    }
-  }, [])
-
-  // FETCH JOBS DATA
-  // Loads available job listings for display in jobs section
-  const fetchJobs = async () => {
-    try {
-      const response = await fetch('/api/jobs')
-      const data = await response.json()
-
-      // Ensure data is an array, handle error responses
-      if (Array.isArray(data)) {
-        setJobs(data)  // Store job listings
-      } else if (data.error) {
-        console.error('API error:', data.error)
-        setJobs([])  // Set empty array on error
-      } else {
-        setJobs([])  // Fallback to empty array
-      }
-    } catch (error) {
-      console.error('Error fetching jobs:', error)
-      setJobs([])  // Set empty array on error
-    } finally {
-      setLoading(false)  // Always stop loading spinner
-    }
-  }
-
-  // FETCH RELATIONSHIPS DATA
-  // Loads user's network including relationships and pending invitations
-  const fetchRelationships = async () => {
-    try {
-      const response = await fetch('/api/user/relationships')
-      const data = await response.json()
-      if (response.ok) {
-        // Store relationships, counts, and pending invitations
-        setRelationships(data)
-      }
-    } catch (error) {
-      console.error('Error fetching relationships:', error)
-    } finally {
-      setRelationshipsLoading(false)  // Always stop loading spinner
-    }
-  }
-
-  // FETCH USER STATISTICS
-  // Loads invite counts and tier information for stats display
-  const fetchUserStats = async () => {
-    try {
-      const response = await fetch('/api/user/stats')
-      const data = await response.json()
-      if (response.ok) {
-        // Store invite counts and tier data
-        setUserStats(data)
-      }
-    } catch (error) {
-      console.error('Error fetching user stats:', error)
-    } finally {
-      setUserStatsLoading(false)  // Always stop loading spinner
-    }
-  }
-
-  // FETCH ENDORSEMENTS DATA
-  // Loads endorsements given by current user for display in endorsements section
   const fetchEndorsements = async () => {
+    setEndorsementsLoading(true)
     try {
       const response = await fetch('/api/user/endorsements')
-      const data = await response.json()
       if (response.ok) {
-        // Store endorsements data
+        const data = await response.json()
         setEndorsements(data)
       }
     } catch (error) {
       console.error('Error fetching endorsements:', error)
     } finally {
-      setEndorsementsLoading(false)  // Always stop loading spinner
+      setEndorsementsLoading(false)
     }
-  }
-
-  const handleRelationshipSubmit = async (e) => {
-    e.preventDefault()
-    setRelationshipLoading(true)
-    setRelationshipMessage('')
-
-    try {
-      const response = await fetch('/api/relationships/establish', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(relationshipForm)
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        setRelationshipMessage(data.message)
-        setRelationshipForm({ email: '', trustAllocation: 10 })
-        // Refresh relationships and stats to show the new one and updated invite count
-        fetchRelationships()
-        fetchUserStats()
-      } else {
-        setRelationshipMessage(data.error || 'Something went wrong')
-      }
-    } catch (error) {
-      setRelationshipMessage('Something went wrong. Please try again.')
-    } finally {
-      setRelationshipLoading(false)
-    }
-  }
-
-  // DRAG AND DROP HANDLERS
-  const handleContactDragStart = (contact) => {
-    setDraggedContact(contact)
-  }
-
-  const handleContactDragEnd = () => {
-    setDraggedContact(null)
-    setDropTargetJob(null)
-  }
-
-  const handleJobDragOver = (e, job) => {
-    e.preventDefault()
-    e.dataTransfer.dropEffect = 'copy'
-    setDropTargetJob(job.id)
-  }
-
-  const handleJobDragLeave = (e) => {
-    // Only clear if we're actually leaving the job card
-    if (!e.currentTarget.contains(e.relatedTarget)) {
-      setDropTargetJob(null)
-    }
-  }
-
-  const handleJobDrop = async (e, job) => {
-    e.preventDefault()
-    setDropTargetJob(null)
-
-    let contact
-    try {
-      // Try to get contact from drag data first
-      const dragData = e.dataTransfer.getData('application/json')
-      if (dragData) {
-        contact = JSON.parse(dragData)
-      } else if (draggedContact) {
-        contact = draggedContact
-      } else {
-        return
-      }
-    } catch (error) {
-      console.error('Error parsing drag data:', error)
-      return
-    }
-
-    try {
-      const response = await fetch('/api/endorsements/link-job', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          jobId: job.id,
-          endorsedUserEmail: contact.email
-        })
-      })
-
-      const data = await response.json()
-
-      if (response.ok) {
-        if (data.action === 'linked') {
-          // Show success message for existing endorsement
-          alert(`✅ ${data.message}`)
-        } else if (data.action === 'create_new') {
-          // Set context and open endorsement form
-          setJobReferralContext({
-            job: data.jobContext,
-            contact: contact
-          })
-          setEndorsementFormOpen(true)
-        }
-      } else {
-        alert(`❌ ${data.error}`)
-      }
-    } catch (error) {
-      console.error('Error linking job:', error)
-      alert('❌ Failed to process referral')
-    }
-  }
-
-  if (status === 'loading') {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-lg">Loading...</div>
-      </div>
-    )
-  }
-
-  if (!session) {
-    return null
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">
-        <div className="px-4 py-6 sm:px-0">
-          <div className="bg-white shadow rounded-lg">
-            <div className="px-6 py-4 border-b border-gray-200">
-              <div className="flex items-center justify-between">
-                <h1 className="text-2xl font-bold text-gray-900">
-                  Welcome{session.user.firstName ? `, ${session.user.firstName}` : ''}!
-                </h1>
-                <div className="flex items-center space-x-3">
-                  {/* Edit Profile Button - Available to all users */}
-                  <button
-                    onClick={() => router.push('/onboard')}
-                    className="px-4 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 border border-indigo-200 rounded-md hover:bg-indigo-100"
-                  >
-                    {session.user.isProfileComplete ? 'Edit Profile' : 'Complete Profile'}
-                  </button>
-                  {/* Admin Dashboard Button - Only show for admin users */}
-                  {session.user.email === 'vaishnav@cloutcareers.com' && (
-                    <button
-                      onClick={() => router.push('/admin')}
-                      className="px-4 py-2 text-sm font-medium text-white bg-purple-600 border border-transparent rounded-md hover:bg-purple-700"
-                    >
-                      Admin Dashboard
-                    </button>
-                  )}
-                  <button
-                    onClick={() => signOut({ callbackUrl: '/' })}
-                    className="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-100 border border-gray-300 rounded-md hover:bg-gray-200"
-                  >
-                    Sign Out
-                  </button>
-                </div>
-              </div>
+    <>
+      {validationSuccess && (
+        <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
+          {/* ... validation success UI ... */}
+        </div>
+      )}
 
-              {/* Dashboard Toggle */}
-              <div className="border-b border-gray-200">
-                <nav className="-mb-px flex space-x-8 px-6">
-                  <button
-                    onClick={() => setCurrentView('node')}
-                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                      currentView === 'node'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Dashboard
-                  </button>
-                  <button
-                    onClick={() => setCurrentView('jobs')}
-                    className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                      currentView === 'jobs'
-                        ? 'border-indigo-500 text-indigo-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    Jobs on Clout
-                  </button>
-                  {session.user.isHiringManager && (
-                    <button
-                      onClick={() => setCurrentView('hiring-manager')}
-                      className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
-                        currentView === 'hiring-manager'
-                          ? 'border-indigo-500 text-indigo-600'
-                          : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                      }`}
-                    >
-                      Hiring Manager
-                    </button>
-                  )}
-                </nav>
-              </div>
-            </div>
-
-            <div className="p-6">
-              {validationSuccess && (
-                <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-lg">
-                  <div className="flex items-center">
-                    <div className="text-green-400">✅</div>
-                    <div className="ml-3">
-                      <p className="text-sm font-medium text-green-800">
-                        Relationship validation completed successfully!
-                      </p>
-                      <p className="text-sm text-green-700">Your network has been updated.</p>
-                    </div>
-                    <button
-                      onClick={() => setValidationSuccess(false)}
-                      className="ml-auto text-green-500 hover:text-green-700"
-                    >
-                      ✕
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Conditional Dashboard Content */}
-              {currentView === 'node' ? (
-                <>
-                  {/* Clout Journey Section - Moved to top */}
-                  <div className="mb-8">
-                    <CloutJourneyCard />
-                  </div>
-
-                  {/* Trust Network Manager - New unified interface */}
-                  <div className="mb-8">
-                    <TrustNetworkManager onRefresh={() => {
-                      fetchRelationships()
-                      fetchUserStats()
-                    }} />
-                  </div>
-
-                  {/* Received Endorsements Notifications */}
-                  <EndorsementNotifications className="mb-8" />
-
-                  {/* Pending Network Requests - Show at top if any exist */}
-                  <div className="mb-8">
-                    <PendingNetworkRequests />
-                  </div>
-
-              {/* Endorsement Section */}
-              <div className="mb-8">
-                <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-6 shadow-sm">
-                  <div className="flex items-start space-x-4">
-                    <div className="flex-shrink-0">
-                      <div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center">
-                        <svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                        </svg>
-                      </div>
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">
-                        Help the Best People You've Worked With
-                      </h3>
-                      <p className="text-gray-700 mb-4">
-                        Write an endorsement for someone exceptional you've worked with. They'll choose how to use it.
-                      </p>
-                      <p className="text-sm text-gray-600 mb-4">
-                        Your endorsement will help them stand out to employers. <strong>They won't see what you write</strong> - they only control whether to keep it private or let Clout use it to find opportunities for them.
-                      </p>
-                      <button
-                        onClick={() => setEndorsementFormOpen(true)}
-                        className="inline-flex items-center px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg"
-                      >
-                        <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                        </svg>
-                        Write an Endorsement
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              </div>
-
-
-              {/* Legacy Network Connections Card - Now integrated into Trust Network Manager */}
-              <div className="mb-8">
-                <NetworkConnectionsCard />
-              </div>
-
-              {/* People You've Endorsed Section */}
-              <div className="border-t border-gray-200 pt-6 mb-8">
-                <div className="flex items-center justify-between mb-6">
-                  <h2 className="text-2xl font-bold text-gray-900">People You've Endorsed</h2>
-                  <span className="text-sm text-gray-500">{endorsements.length} endorsements given</span>
-                </div>
-
-                {endorsementsLoading ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500">Loading endorsements...</div>
-                  </div>
-                ) : endorsements.length === 0 ? (
-                  <div className="text-center py-8">
-                    <div className="text-gray-500">No endorsements written yet. Help someone exceptional by writing their first endorsement!</div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    {endorsements.map((endorsement) => (
-                      <div key={endorsement.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                        <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-gray-900">
-                            {endorsement.endorsedUser?.firstName && endorsement.endorsedUser?.lastName
-                              ? `${endorsement.endorsedUser.firstName} ${endorsement.endorsedUser.lastName}`
-                              : endorsement.endorsedUserEmail}
-                          </h3>
-                          <span className={`text-xs px-2 py-1 rounded-full ${
-                            endorsement.status === 'PENDING_CANDIDATE_ACTION' ? 'bg-yellow-100 text-yellow-800' :
-                            endorsement.status === 'PRIVATE' ? 'bg-blue-100 text-blue-800' :
-                            endorsement.status === 'ACTIVE_MATCHING' ? 'bg-green-100 text-green-800' :
-                            'bg-gray-100 text-gray-800'
-                          }`}>
-                            {endorsement.status === 'PENDING_CANDIDATE_ACTION' ? 'Pending their decision' :
-                             endorsement.status === 'PRIVATE' ? 'Active - Private mode' :
-                             endorsement.status === 'ACTIVE_MATCHING' ? 'Active - Matching enabled' :
-                             'Not using'}
-                          </span>
-                        </div>
-                        <p className="text-sm text-gray-600">{endorsement.endorsedUserEmail}</p>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Written {new Date(endorsement.createdAt).toLocaleDateString()}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-                </>
-              ) : currentView === 'jobs' ? (
-                /* Jobs Dashboard with Drag & Drop */
-                <div className="border-t border-gray-200 pt-6">
-                  <div className="flex items-center justify-between mb-6">
-                    <h2 className="text-2xl font-bold text-gray-900">Available Jobs</h2>
-                    <span className="text-sm text-gray-500">{jobs.length} jobs available</span>
-                  </div>
-
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-                    {/* Trusted Contacts Sidebar */}
-                    <div className="lg:col-span-1">
-                      <TrustedContactsSidebar
-                        onContactDragStart={handleContactDragStart}
-                        onContactDragEnd={handleContactDragEnd}
-                        className="sticky top-6"
-                      />
-                    </div>
-
-                    {/* Jobs Grid */}
-                    <div className="lg:col-span-3">
-
-                  {loading ? (
-                    <div className="text-center py-8">
-                      <div className="text-gray-500">Loading jobs...</div>
-                    </div>
-                  ) : !Array.isArray(jobs) || jobs.length === 0 ? (
-                    <div className="text-center py-8">
-                      <div className="text-gray-500">No jobs available at the moment.</div>
-                    </div>
-                  ) : (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                      {jobs.map((job) => (
-                        <div
-                          key={job.id}
-                          onDragOver={(e) => handleJobDragOver(e, job)}
-                          onDragLeave={handleJobDragLeave}
-                          onDrop={(e) => handleJobDrop(e, job)}
-                          className={`relative bg-white border rounded-lg p-6 transition-all duration-200 cursor-pointer ${
-                            dropTargetJob === job.id
-                              ? 'border-blue-400 shadow-lg bg-blue-50 ring-2 ring-blue-200'
-                              : draggedContact
-                              ? 'border-gray-300 hover:border-blue-300 hover:shadow-md'
-                              : 'border-gray-200 hover:shadow-md'
-                          }`}
-                          onClick={(e) => {
-                            // Don't navigate if we're in drag mode
-                            if (!draggedContact) {
-                              router.push(`/jobs/${job.id}`)
-                            }
-                          }}
-                        >
-                          <div className="flex items-start justify-between mb-4">
-                            <div className="flex-1">
-                              <h3 className="text-lg font-semibold text-gray-900 mb-2">{job.title}</h3>
-                              <p className="text-sm font-medium text-indigo-600">{job.company.name}</p>
-                              <p className="text-xs text-gray-500">{job.company.industry}</p>
-                            </div>
-                          </div>
-
-                          <div className="space-y-2 mb-4">
-                            <div className="flex items-center text-sm text-gray-600">
-                              <span className="font-medium">📍</span>
-                              <span className="ml-2">{job.remote ? 'Remote' : job.location}</span>
-                            </div>
-
-                            {job.salaryMin && job.salaryMax && (
-                              <div className="flex items-center text-sm text-gray-600">
-                                <span className="font-medium">💰</span>
-                                <span className="ml-2">
-                                  ${job.salaryMin.toLocaleString()} - ${job.salaryMax.toLocaleString()}
-                                </span>
-                              </div>
-                            )}
-
-                            <div className="flex items-center text-sm text-gray-600">
-                              <span className="font-medium">👥</span>
-                              <span className="ml-2">{job._count.applications} application{job._count.applications !== 1 ? 's' : ''}</span>
-                            </div>
-                          </div>
-
-                          <p className="text-sm text-gray-600 mb-4 line-clamp-3">{job.description}</p>
-
-                          <div className="flex flex-wrap gap-1 mb-4">
-                            {job.requirements.slice(0, 2).map((req, idx) => (
-                              <span key={idx} className="text-xs bg-gray-100 text-gray-700 px-2 py-1 rounded">
-                                {req}
-                              </span>
-                            ))}
-                            {job.requirements.length > 2 && (
-                              <span className="text-xs text-gray-500">+{job.requirements.length - 2} more</span>
-                            )}
-                          </div>
-
-                          <div className="flex space-x-2">
-                            <button
-                              className="flex-1 px-3 py-2 bg-green-600 text-white text-sm font-medium rounded-md hover:bg-green-700 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation() // Prevent card click from triggering
-                                router.push(`/jobs/${job.id}/refer`)
-                              }}
-                            >
-                              Refer Talent
-                            </button>
-                            <button
-                              className="flex-1 px-3 py-2 bg-purple-600 text-white text-sm font-medium rounded-md hover:bg-purple-700 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation() // Prevent card click from triggering
-                                router.push(`/jobs/${job.id}/refer?mode=delegate`)
-                              }}
-                            >
-                              Forward Request
-                            </button>
-                            <button
-                              className="flex-1 px-3 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md hover:bg-indigo-700 transition-colors"
-                              onClick={(e) => {
-                                e.stopPropagation() // Prevent card click from triggering
-                                router.push(`/jobs/${job.id}`)
-                              }}
-                            >
-                              View Details
-                            </button>
-                          </div>
-
-                          {/* Drag & Drop Overlay */}
-                          {dropTargetJob === job.id && (
-                            <div className="absolute inset-0 bg-blue-500 bg-opacity-10 border-2 border-dashed border-blue-400 rounded-lg flex items-center justify-center pointer-events-none">
-                              <div className="text-center">
-                                <div className="text-2xl mb-2">👤➡️💼</div>
-                                <div className="text-blue-700 font-medium">Drop to refer for this job</div>
-                                <div className="text-blue-600 text-sm">
-                                  {draggedContact && `${draggedContact.firstName || draggedContact.email} → ${job.title}`}
-                                </div>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                    </div>
-                  </div>
-                </div>
-              ) : (
-                /* Hiring Manager Dashboard */
-                <HiringManagerDashboard
-                  userInfo={{
-                    firstName: session.user.firstName || '',
-                    lastName: session.user.lastName || '',
-                    email: session.user.email
-                  }}
-                  isAdmin={session.user.isAdmin}
-                />
-              )}
+      <div className="mb-8"><CloutJourneyCard /></div>
+      <div className="mb-8"><TrustNetworkManager onRefresh={() => {}} /></div>
+      <EndorsementNotifications className="mb-8" />
+      <div className="mb-8"><PendingNetworkRequests /></div>
+      <div className="mb-8">
+        <div className="bg-gradient-to-r from-amber-50 to-yellow-50 border border-amber-200 rounded-lg p-6 shadow-sm">
+          <div className="flex items-start space-x-4">
+            <div className="flex-shrink-0"><div className="w-12 h-12 bg-amber-100 rounded-lg flex items-center justify-center"><svg className="w-6 h-6 text-amber-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg></div></div>
+            <div className="flex-1">
+              <h3 className="text-xl font-bold text-gray-900 mb-2">Help the Best People You've Worked With</h3>
+              <p className="text-gray-700 mb-4">Write an endorsement for someone exceptional you've worked with. They'll choose how to use it.</p>
+              <button onClick={() => setEndorsementFormOpen(true)} className="inline-flex items-center px-6 py-3 bg-amber-600 hover:bg-amber-700 text-white font-medium rounded-lg transition-colors duration-200 shadow-md hover:shadow-lg">
+                <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6v6m0 0v6m0-6h6m-6 0H6" /></svg>
+                Write an Endorsement
+              </button>
             </div>
           </div>
         </div>
       </div>
+      <div className="mb-8"><NetworkConnectionsCard /></div>
+      <div className="border-t border-gray-200 pt-6 mb-8">
+        <div className="flex items-center justify-between mb-6"><h2 className="text-2xl font-bold text-gray-900">People You've Endorsed</h2><span className="text-sm text-gray-500">{endorsements.length} endorsements given</span></div>
+        {endorsementsLoading ? (
+          <div className="text-center py-8"><div className="text-gray-500">Loading endorsements...</div></div>
+        ) : endorsements.length === 0 ? (
+          <div className="text-center py-8"><div className="text-gray-500">No endorsements written yet.</div></div>
+        ) : (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {endorsements.map((endorsement) => (
+              <div key={endorsement.id} className="bg-white border border-gray-200 rounded-lg p-4">
+                {/* ... endorsement card UI ... */}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
 
-      {/* Endorsement Form - Show for both node and jobs dashboard */}
-      {(currentView === 'node' || currentView === 'jobs') && (
-        <EndorsementForm
-          isOpen={endorsementFormOpen}
-          onClose={() => {
-            setEndorsementFormOpen(false)
-            setJobReferralContext(null)
-          }}
-          onSuccess={() => {
-            fetchEndorsements()
-            if (jobReferralContext) {
-              alert(`✅ Successfully referred ${jobReferralContext.contact.firstName || jobReferralContext.contact.email} for ${jobReferralContext.job.title}!`)
-            }
-            setJobReferralContext(null)
-          }}
-          userInfo={{
-            firstName: session.user.firstName || '',
-            lastName: session.user.lastName || '',
-            email: session.user.email
-          }}
-          isJobReferral={!!jobReferralContext}
-          jobReferralContext={jobReferralContext}
-        />
-      )}
-    </div>
+      <EndorsementForm
+        isOpen={endorsementFormOpen}
+        onClose={() => setEndorsementFormOpen(false)}
+        onSuccess={fetchEndorsements}
+        userInfo={{ firstName: session?.user?.firstName || '', lastName: session?.user?.lastName || '', email: session?.user?.email || '' }}
+      />
+    </>
   )
 }
