@@ -8,7 +8,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
 interface JobDetail {
@@ -53,13 +53,9 @@ interface JobDetail {
   }
 }
 
-interface JobDetailPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function JobDetailPage({ params }: JobDetailPageProps) {
+export default function JobDetailPage() {
+  const params = useParams()
+  const id = params.id as string
   const [job, setJob] = useState<JobDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -68,8 +64,9 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
 
   useEffect(() => {
     const fetchJob = async () => {
+      if (!id) return
       try {
-        const response = await fetch(`/api/jobs/${params.id}`)
+        const response = await fetch(`/api/jobs/${id}`)
         if (response.ok) {
           const data = await response.json()
           setJob(data.job)
@@ -87,7 +84,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     fetchJob()
-  }, [params.id])
+  }, [id])
 
   const getLocationDisplay = (locationType: string, locationCity?: string) => {
     switch (locationType) {
