@@ -249,7 +249,11 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
             message: ''
           })
         } else {
-          setError(data.error || 'Failed to send delegation')
+          if (data.error === 'You cannot delegate a job to yourself.') {
+            setError('You cannot delegate this job to yourself. Please choose a different person.')
+          } else {
+            setError(data.error || 'Failed to send delegation')
+          }
         }
       }
     } catch (error) {
