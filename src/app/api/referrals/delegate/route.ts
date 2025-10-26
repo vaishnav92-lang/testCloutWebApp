@@ -91,6 +91,12 @@ export async function POST(request: NextRequest) {
       try {
         await forwardJob(jobId, currentUser.id, delegateUser.id, message)
       } catch (forwardError: any) {
+        if (forwardError.message === 'Cannot forward job to yourself') {
+          return NextResponse.json(
+            { error: 'You cannot delegate a job to yourself.' },
+            { status: 400 } // Bad Request
+          )
+        }
         // If forward already exists, that's okay - just continue
         if (!forwardError.message?.includes('duplicate')) {
           throw forwardError
