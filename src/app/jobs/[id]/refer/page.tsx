@@ -76,6 +76,8 @@ export default function JobReferralPage() {
     message: ''
   })
 
+  const [isDelegateContactSelected, setIsDelegateContactSelected] = useState(false)
+
   const [submitting, setSubmitting] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState(false)
@@ -146,17 +148,28 @@ export default function JobReferralPage() {
   }
 
   const handleDelegateContactSelect = (contactId: string) => {
-    const contact = trustedContacts.find(c => c.id === contactId)
-    if (contact) {
-      const displayName = contact.firstName && contact.lastName
-        ? `${contact.firstName} ${contact.lastName}`
-        : contact.firstName || contact.lastName || contact.email
+    if (contactId) {
+      const contact = trustedContacts.find(c => c.id === contactId)
+      if (contact) {
+        const displayName = contact.firstName && contact.lastName
+          ? `${contact.firstName} ${contact.lastName}`
+          : contact.firstName || contact.lastName || contact.email
 
+        setDelegateForm(prev => ({
+          ...prev,
+          delegateName: displayName,
+          delegateEmail: contact.email
+        }))
+        setIsDelegateContactSelected(true)
+      }
+    } else {
+      // 'Select a trusted contact...' was chosen, clear and unlock fields
       setDelegateForm(prev => ({
         ...prev,
-        delegateName: displayName,
-        delegateEmail: contact.email
+        delegateName: '',
+        delegateEmail: '',
       }))
+      setIsDelegateContactSelected(false)
     }
   }
 
@@ -659,7 +672,10 @@ export default function JobReferralPage() {
                         required
                         value={delegateForm.delegateName}
                         onChange={(e) => setDelegateForm(prev => ({ ...prev, delegateName: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                        disabled={isDelegateContactSelected}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 ${
+                          isDelegateContactSelected ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
                         placeholder="Jane Smith"
                       />
                     </div>
@@ -672,7 +688,10 @@ export default function JobReferralPage() {
                         required
                         value={delegateForm.delegateEmail}
                         onChange={(e) => setDelegateForm(prev => ({ ...prev, delegateEmail: e.target.value }))}
-                        className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500"
+                        disabled={isDelegateContactSelected}
+                        className={`w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-purple-500 focus:border-purple-500 ${
+                          isDelegateContactSelected ? 'bg-gray-100 cursor-not-allowed' : ''
+                        }`}
                         placeholder="jane@company.com"
                       />
                     </div>
