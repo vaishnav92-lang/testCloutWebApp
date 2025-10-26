@@ -7,7 +7,7 @@ interface NetworkMember {
   relationshipId: string
   name: string
   email: string
-  status: 'CONFIRMED' | 'PENDING' | 'INVITED'
+  status: 'CONFIRMED' | 'PENDING' | 'INVITED' | 'DECLINED'
   currentAllocation: number
 }
 
@@ -358,9 +358,14 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
                     </div>
                     <span className={`text-xs px-2 py-1 rounded-full ${
                       member.status === 'CONFIRMED' ? 'bg-green-100 text-green-800' :
-                      'bg-blue-100 text-blue-800'
+                      member.status === 'PENDING' ? 'bg-yellow-100 text-yellow-800' :
+                      member.status === 'INVITED' ? 'bg-blue-100 text-blue-800' :
+                      'bg-gray-100 text-gray-800'
                     }`}>
-                      {member.status === 'INVITED' ? 'Invitation Sent' : 'In Network'}
+                      {member.status === 'CONFIRMED' ? 'In Network' :
+                       member.status === 'PENDING' ? 'Pending Acceptance' :
+                       member.status === 'INVITED' ? 'Invitation Sent' :
+                       'Unknown Status'}
                     </span>
                   </div>
                 </div>
@@ -397,6 +402,11 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
               {member.status === 'INVITED' && (
                 <p className="text-xs text-blue-600 mt-2 ml-0">
                   📧 Invitation sent - they'll be in your network when they join
+                </p>
+              )}
+              {member.status === 'PENDING' && (
+                <p className="text-xs text-yellow-600 mt-2 ml-0">
+                  ⏳ Pending acceptance - they need to accept your network request
                 </p>
               )}
             </div>

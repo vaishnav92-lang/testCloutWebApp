@@ -3,22 +3,31 @@ import { prisma } from '@/lib/prisma'
 
 export async function POST(request: NextRequest) {
   try {
-    const { email, referralCode } = await request.json()
+    const { email, referralCode: invitationId } = await request.json()
 
-    if (!email || !referralCode) {
+    if (!email || !invitationId) {
       return NextResponse.json({
-        error: 'Email and referral code are required'
+        error: 'Email and invitation ID are required'
       }, { status: 400 })
     }
 
-    // Find the referrer
-    const referrer = await prisma.user.findUnique({
-      where: { referralCode }
+    // Find the invitation
+    const invitation = await prisma.invitation.findUnique({
+      where: { id: invitationId },
+      include: { sender: true } // Include sender to get referrer info
     })
+
+    if (!invitation || invitation.status !== 'PENDING') {
+      return NextResponse.json({
+        error: 'Invalid or expired invitation'
+      }, { status: 400 })
+    }
+
+    const referrer = invitation.sender
 
     if (!referrer) {
       return NextResponse.json({
-        error: 'Invalid referral code'
+        error: 'Referrer not found for this invitation'
       }, { status: 400 })
     }
 
@@ -36,6 +45,14 @@ export async function POST(request: NextRequest) {
         })
       }
 
+      // If the existing user is the receiver of this invitation, mark it as accepted
+      if (existingUser.id === invitation.receiverId) {
+        await prisma.invitation.update({
+          where: { id: invitation.id },
+          data: { status: 'ACCEPTED', respondedAt: new Date() }
+        })
+      }
+
       return NextResponse.json({
         message: 'User already exists, referral relationship updated'
       })
@@ -46,6 +63,37 @@ export async function POST(request: NextRequest) {
       data: {
         email,
         referredById: referrer.id,
+      }
+    })
+
+    // Mark invitation as accepted and link to the new user
+    await prisma.invitation.update({
+      where: { id: invitation.id },
+      data: { status: 'ACCEPTED', respondedAt: new Date(), receiverId: newUser.id }
+    })
+
+    // Update the relationship status from PENDING to CONFIRMED
+    // This relationship was created when the invite was sent
+    await prisma.relationship.updateMany({
+      where: {
+        OR: [
+          { user1Id: referrer.id, user2Id: newUser.id },
+          { user1Id: newUser.id, user2Id: referrer.id }
+        ],
+        status: 'PENDING'
+      },
+      data: { status: 'CONFIRMED' }
+    })
+
+    // Allocate trust points now that the relationship is confirmed
+    // Get the trustScore from the invitation
+    const trustAllocation = invitation.trustScore * 10; // Convert back to 0-100 scale
+
+    await prisma.user.update({
+      where: { id: referrer.id },
+      data: {
+        availableTrust: { decrement: trustAllocation },
+        allocatedTrust: { increment: trustAllocation }
       }
     })
 

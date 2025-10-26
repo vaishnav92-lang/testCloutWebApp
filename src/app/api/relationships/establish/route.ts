@@ -202,28 +202,24 @@ export async function POST(request: NextRequest) {
           }
         })
 
-        // Create CONFIRMED relationship WITH immediate trust allocation
+        // Create PENDING relationship (not CONFIRMED) without immediate trust allocation
         await tx.relationship.create({
           data: {
             user1Id: currentUser.id,
             user2Id: newUser.id,
-            user1TrustAllocated: trustAllocation, // Allocate trust immediately
-            user2TrustAllocated: 0, // New user starts with 0
+            user1TrustAllocated: 0, // No trust allocated yet
+            user2TrustAllocated: 0, // No trust allocated yet
             // Legacy fields for compatibility
-            user1TrustScore: Math.round(trustAllocation / 10), // Convert to legacy scale
+            user1TrustScore: 0,
             user2TrustScore: 0,
-            status: 'CONFIRMED' // Immediately confirmed
+            status: 'PENDING' // PENDING, not CONFIRMED
           }
         })
 
-        // Update sender's trust allocation AND legacy invite tracking
+        // Update sender's legacy invite tracking (no trust allocation here)
         await tx.user.update({
           where: { id: currentUser.id },
           data: {
-            // Update trust allocation immediately
-            availableTrust: currentUser.availableTrust - trustAllocation,
-            allocatedTrust: currentUser.allocatedTrust + trustAllocation,
-            // Legacy fields for compatibility
             availableInvites: { decrement: 1 },
             totalInvitesUsed: { increment: 1 }
           }

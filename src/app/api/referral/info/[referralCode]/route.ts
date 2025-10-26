@@ -6,26 +6,40 @@ export async function GET(
   { params }: { params: Promise<{ referralCode: string }> }
 ) {
   try {
-    const { referralCode } = await params
+    const { referralCode: invitationId } = await params
 
-    const referrer = await prisma.user.findUnique({
-      where: { referralCode },
-      select: {
-        id: true,
-        firstName: true,
-        lastName: true,
-        bio: true,
-        location: true,
-        _count: {
-          select: { referrals: true }
+    // Find the invitation first
+    const invitation = await prisma.invitation.findUnique({
+      where: { id: invitationId },
+      include: {
+        sender: {
+          select: {
+            id: true,
+            firstName: true,
+            lastName: true,
+            bio: true,
+            location: true,
+            _count: {
+              select: { referrals: true }
+            }
+          }
         }
       }
     })
 
+    if (!invitation || invitation.status !== 'PENDING') {
+      return NextResponse.json({
+        referrer: null,
+        error: 'Invalid or expired referral link'
+      }, { status: 404 })
+    }
+
+    const referrer = invitation.sender
+
     if (!referrer) {
       return NextResponse.json({
         referrer: null,
-        error: 'Invalid referral code'
+        error: 'Referrer not found'
       }, { status: 404 })
     }
 

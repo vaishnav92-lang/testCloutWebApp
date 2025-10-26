@@ -100,3 +100,43 @@
 
   In short, it doesn't work correctly. The feature is failing silently from a UI perspective, but the logic is not executing, and the information
   presented to the user is wrong. The only way to fix it is to move the database-dependent code to a server-side API route.
+
+
+
+
+
+
+
+
+
+
+
+  Starting iteration with admin trust = 1.0, others = 0.0
+Iteration 0: max change = 0.020792875918673875
+✓ Converged after 3 iterations
+ GET /api/user/relationships 200 in 2929ms
+ GET /api/trust-allocations 200 in 2858ms
+Background trust computation failed: Error [PrismaClientKnownRequestError]: 
+Invalid `tx.computedTrustScore.create()` invocation in
+/home/tristan/prog/testCloutWebApp/.next/server/chunks/[root-of-the-server]__22eab2f2._.js:607:41
+
+  604 await tx.computedTrustScore.deleteMany({});
+  605 // Insert new computed scores
+  606 for (const score of scores){
+→ 607     await tx.computedTrustScore.create(
+Transaction API error: Transaction not found. Transaction ID is invalid, refers to an old closed transaction Prisma doesn't have information about anymore, or was obtained before disconnecting.
+    at <unknown> (src/lib/eigentrust-new.ts:307:35)
+    at async (src/lib/eigentrust-new.ts:307:7)
+    at async computeEigenTrust (src/lib/eigentrust-new.ts:301:3)
+  305 |     // Insert new computed scores
+  306 |     for (const score of scores) {
+> 307 |       await tx.computedTrustScore.create({
+      |                                   ^
+  308 |         data: {
+  309 |           userId: score.userId,
+  310 |           trustScore: score.trustScore, {
+  code: 'P2028',
+  meta: [Object],
+  clientVersion: '6.16.2'
+}
+ POST /api/relationships/establish 400 in 2069ms
