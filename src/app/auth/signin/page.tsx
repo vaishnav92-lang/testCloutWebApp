@@ -8,6 +8,8 @@ import { useRouter, useSearchParams } from "next/navigation"
 
 function SignInContent() {
   const [email, setEmail] = useState('')
+  const [password, setPassword] = useState('')
+  const [authMode, setAuthMode] = useState<'magic' | 'password'>('magic')
   const [isLoading, setIsLoading] = useState(false)
   const [message, setMessage] = useState('')
   const router = useRouter()
@@ -29,33 +31,51 @@ function SignInContent() {
     setMessage('')
 
     try {
-      // If there's an invite token, validate the email first
-      if (inviteToken) {
-        const response = await fetch('/api/auth/validate-invite', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email, inviteToken })
+      if (authMode === 'password') {
+        // Password authentication
+        const result = await signIn('credentials', {
+          email,
+          password,
+          redirect: false,
+          callbackUrl: '/dashboard'
         })
 
-        const data = await response.json()
-
-        if (!data.valid) {
-          setMessage(data.message || 'Invalid invitation')
-          setIsLoading(false)
-          return
+        if (result?.ok) {
+          setMessage('Signing you in...')
+          router.push('/dashboard')
+        } else {
+          setMessage('Invalid email or password. Please check your credentials.')
         }
-      }
-
-      const result = await signIn('email', {
-        email,
-        redirect: false,
-        callbackUrl: inviteToken ? `/onboard?token=${inviteToken}` : '/dashboard'
-      })
-
-      if (result?.ok) {
-        setMessage('Check your email for a magic link!')
       } else {
-        setMessage('Something went wrong. Please try again.')
+        // Magic link authentication
+        // If there's an invite token, validate the email first
+        if (inviteToken) {
+          const response = await fetch('/api/auth/validate-invite', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, inviteToken })
+          })
+
+          const data = await response.json()
+
+          if (!data.valid) {
+            setMessage(data.message || 'Invalid invitation')
+            setIsLoading(false)
+            return
+          }
+        }
+
+        const result = await signIn('email', {
+          email,
+          redirect: false,
+          callbackUrl: inviteToken ? `/onboard?token=${inviteToken}` : '/dashboard'
+        })
+
+        if (result?.ok) {
+          setMessage('Check your email for a magic link!')
+        } else {
+          setMessage('Something went wrong. Please try again.')
+        }
       }
     } catch (error) {
       setMessage('Something went wrong. Please try again.')
@@ -74,10 +94,40 @@ function SignInContent() {
           <p className="mt-2 text-center text-sm text-gray-600">
             {inviteToken
               ? 'Enter your email to activate your account'
-              : 'Enter your email to receive a magic link'
+              : authMode === 'magic'
+                ? 'Enter your email to receive a magic link'
+                : 'Enter your email and password (950792) to sign in'
             }
           </p>
         </div>
+
+        {/* Authentication Mode Toggle */}
+        {!inviteToken && (
+          <div className="flex justify-center space-x-4 mb-6">
+            <button
+              type="button"
+              onClick={() => setAuthMode('magic')}
+              className={`px-4 py-2 text-sm font-medium rounded-md ${
+                authMode === 'magic'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Magic Link
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode('password')}
+              className={`px-4 py-2 text-sm font-medium rounded-md ${
+                authMode === 'password'
+                  ? 'bg-indigo-600 text-white'
+                  : 'bg-gray-200 text-gray-700 hover:bg-gray-300'
+              }`}
+            >
+              Password
+            </button>
+          </div>
+        )}
 
         <form className="mt-8 space-y-6" onSubmit={handleSubmit}>
           <div>
@@ -97,13 +147,32 @@ function SignInContent() {
             />
           </div>
 
+          {authMode === 'password' && (
+            <div>
+              <label htmlFor="password" className="sr-only">
+                Password
+              </label>
+              <input
+                id="password"
+                name="password"
+                type="password"
+                autoComplete="current-password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                className="relative block w-full px-3 py-2 border border-gray-300 rounded-md placeholder-gray-500 text-gray-900 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Password"
+              />
+            </div>
+          )}
+
           <div>
             <button
               type="submit"
               disabled={isLoading}
               className="group relative w-full flex justify-center py-2 px-4 border border-transparent text-sm font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50"
             >
-              {isLoading ? 'Sending...' : 'Send Magic Link'}
+              {isLoading ? 'Sending...' : authMode === 'password' ? 'Sign In' : 'Send Magic Link'}
             </button>
           </div>
 

