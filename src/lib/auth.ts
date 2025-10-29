@@ -17,9 +17,8 @@ import { getResend } from "./resend"
 import type { NextAuthOptions } from "next-auth"
 
 export const authOptions: NextAuthOptions = {
-  // Use Prisma adapter to store sessions/accounts in database
-  // This allows for session revocation and better security vs JWT tokens
-  adapter: PrismaAdapter(prisma),
+  // When using credentials provider, we can't use database adapter
+  // adapter: PrismaAdapter(prisma),
 
   providers: [
     EmailProvider({
@@ -229,7 +228,7 @@ export const authOptions: NextAuthOptions = {
     },
 
     // JWT callback for storing user ID in token
-    async jwt({ token, user }) {
+    async jwt({ token, user, account }) {
       if (user) {
         token.sub = user.id
       }
@@ -254,7 +253,7 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // Use JWT sessions to support both email and credentials providers
+  // Use JWT sessions to support credentials provider
   session: {
     strategy: "jwt",
   },
