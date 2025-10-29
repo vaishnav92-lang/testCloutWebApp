@@ -24,12 +24,23 @@ export const authOptions: NextAuthOptions = {
     EmailProvider({
       from: process.env.EMAIL_FROM,
 
+      // IMPORTANT: NextAuth with Prisma adapter requires these to force custom email
+      server: {
+        host: "smtp.resend.com",
+        port: 587,
+        auth: {
+          user: "resend",
+          pass: process.env.RESEND_API_KEY
+        }
+      },
+
       // Custom email sending function using Resend instead of default
       // This gives us more control over email templates and delivery
       sendVerificationRequest: async ({ identifier: email, url }) => {
+        console.log("🔥 CUSTOM EMAIL FUNCTION CALLED for:", email)
         try {
           const resend = getResend()
-          await resend.emails.send({
+          const result = await resend.emails.send({
             from: process.env.EMAIL_FROM!,
             to: email,
             subject: "Sign in to Clout Careers",
@@ -52,8 +63,9 @@ export const authOptions: NextAuthOptions = {
               </div>
             `,
           })
+          console.log("✅ Email sent successfully via Resend:", result)
         } catch (error) {
-          console.error("Failed to send email:", error)
+          console.error("❌ Failed to send email:", error)
           throw new Error("Failed to send verification email")
         }
       },
