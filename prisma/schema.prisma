@@ -66,16 +66,16 @@ model User {
   receivedInvitations      Invitation[]          @relation("InviteReceiver")
   sentInvitations          Invitation[]          @relation("InviteSender")
   applications             JobApplication[]
+  jobForwardsSent          JobForward[]          @relation("JobForwardFrom")
+  jobForwardsReceived      JobForward[]          @relation("JobForwardTo")
   ownedJobs                Job[]
+  referralsAsCandidate     Referral[]            @relation("ReferralCandidate")
+  referralsAsReferrer      Referral[]            @relation("ReferralReferrer")
   relationshipsAsUser1     Relationship[]        @relation("RelationshipUser1")
   relationshipsAsUser2     Relationship[]        @relation("RelationshipUser2")
   sessions                 Session[]
   trustAllocationsGiven    TrustAllocation[]     @relation("TrustGiver")
   trustAllocationsReceived TrustAllocation[]     @relation("TrustReceiver")
-  jobForwardsSent          JobForward[]          @relation("JobForwardFrom")
-  jobForwardsReceived      JobForward[]          @relation("JobForwardTo")
-  referralsAsCandidate     Referral[]            @relation("ReferralCandidate")
-  referralsAsReferrer      Referral[]            @relation("ReferralReferrer")
   referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
   referrals                User[]                @relation("UserReferrals")
 
@@ -208,9 +208,9 @@ model Job {
   endorsementReleases     EndorsementRelease[]
   endorsements            Endorsement[]
   applications            JobApplication[]
+  jobForwards             JobForward[]
   company                 Company               @relation(fields: [companyId], references: [id])
   owner                   User                  @relation(fields: [ownerId], references: [id])
-  jobForwards             JobForward[]
   referrals               Referral[]
 
   @@map("jobs")
@@ -392,9 +392,8 @@ model JobForward {
   toNodeId   String
   message    String?
   createdAt  DateTime @default(now())
-
-  job        Job      @relation(fields: [jobId], references: [id])
   fromNode   User     @relation("JobForwardFrom", fields: [fromNodeId], references: [id])
+  job        Job      @relation(fields: [jobId], references: [id])
   toNode     User     @relation("JobForwardTo", fields: [toNodeId], references: [id])
 
   @@unique([jobId, fromNodeId, toNodeId])
@@ -414,9 +413,8 @@ model Referral {
   notes           String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @updatedAt
-
-  job             Job            @relation(fields: [jobId], references: [id])
   candidate       User           @relation("ReferralCandidate", fields: [candidateId], references: [id])
+  job             Job            @relation(fields: [jobId], references: [id])
   referrer        User           @relation("ReferralReferrer", fields: [referrerNodeId], references: [id])
 
   @@map("referrals")

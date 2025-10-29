@@ -32,21 +32,21 @@ function SignInContent() {
 
     try {
       if (authMode === 'password') {
-        // Password authentication
-        console.log('Attempting password login with:', { email, password, passwordLength: password.length })
-        const result = await signIn('credentials', {
-          email,
-          password,
-          redirect: false,
-          callbackUrl: '/dashboard'
+        // Password authentication via custom endpoint
+        const response = await fetch('/api/auth/password-login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password })
         })
-        console.log('Sign in result:', result)
 
-        if (result?.ok) {
+        const data = await response.json()
+
+        if (response.ok) {
           setMessage('Signing you in...')
-          router.push('/dashboard')
+          // Force refresh to pick up the new session
+          window.location.href = '/dashboard'
         } else {
-          setMessage('Invalid email or password. Please check your credentials.')
+          setMessage(data.error || 'Invalid email or password. Please check your credentials.')
         }
       } else {
         // Magic link authentication

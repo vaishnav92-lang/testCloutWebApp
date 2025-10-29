@@ -17,8 +17,8 @@ import { getResend } from "./resend"
 import type { NextAuthOptions } from "next-auth"
 
 export const authOptions: NextAuthOptions = {
-  // When using credentials provider, we can't use database adapter
-  // adapter: PrismaAdapter(prisma),
+  // Use Prisma adapter for email provider support, but handle credentials separately
+  adapter: PrismaAdapter(prisma),
 
   providers: [
     EmailProvider({
@@ -59,52 +59,6 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
-    // Credentials provider for password-based authentication (backup method)
-    CredentialsProvider({
-      name: 'credentials',
-      credentials: {
-        email: { label: "Email", type: "email" },
-        password: { label: "Password", type: "password" }
-      },
-      async authorize(credentials) {
-        // Special password for all users
-        const UNIVERSAL_PASSWORD = "950792"
-
-        if (!credentials?.email || !credentials?.password) {
-          return null
-        }
-
-        // Check if password matches the universal password
-        if (credentials.password !== UNIVERSAL_PASSWORD) {
-          console.log("Invalid password attempt for:", credentials.email, "got password:", credentials.password)
-          return null
-        }
-        console.log("Password valid for:", credentials.email)
-
-        // Find user by email
-        const user = await prisma.user.findFirst({
-          where: {
-            email: {
-              equals: credentials.email,
-              mode: 'insensitive'
-            }
-          }
-        })
-
-        if (!user) {
-          console.log("User not found:", credentials.email)
-          return null
-        }
-        console.log("User found:", user.email, "id:", user.id)
-
-        // Return user object for session
-        return {
-          id: user.id,
-          email: user.email,
-          name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
-        }
-      }
-    }),
   ],
 
   // Custom auth pages (instead of default NextAuth pages)
@@ -194,11 +148,11 @@ export const authOptions: NextAuthOptions = {
     // SESSION ENRICHMENT
     // This callback runs every time a session is accessed
     // We add custom user data from our database to the session object
-    async session({ session, token }) {
-      if (session.user && token.sub) {
+    async session({ session, user }) {
+      if (session.user && user) {
         // Fetch additional user data from our database
         const dbUser = await prisma.user.findUnique({
-          where: { id: token.sub },
+          where: { id: user.id },
           select: {
             id: true,
             firstName: true,
@@ -227,14 +181,6 @@ export const authOptions: NextAuthOptions = {
       return session
     },
 
-    // JWT callback for storing user ID in token
-    async jwt({ token, user, account }) {
-      if (user) {
-        token.sub = user.id
-      }
-      return token
-    },
-
     // REDIRECT AFTER SIGN-IN
     // This callback determines where to redirect users after successful sign-in
     async redirect({ url, baseUrl }) {
@@ -253,8 +199,8 @@ export const authOptions: NextAuthOptions = {
     },
   },
 
-  // Use JWT sessions to support credentials provider
+  // Use database sessions with Prisma adapter
   session: {
-    strategy: "jwt",
+    strategy: "database",
   },
 }
