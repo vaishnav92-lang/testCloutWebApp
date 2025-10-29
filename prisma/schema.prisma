@@ -8,83 +8,76 @@ datasource db {
 }
 
 model User {
-  id                     String                @id @default(cuid())
-  email                  String                @unique
-  emailVerified          DateTime?
-  firstName              String?
-  lastName               String?
-  profileImage           String?
-  phone                  String?
-  location               String?
-  linkedinUrl            String?
-  bio                    String?
-  skills                 String[]              @default([])
-  experience             String?
-  isProfileComplete      Boolean               @default(false)
-  referralCode           String                @unique @default(cuid())
-  referredById           String?
-  inviteToken            String?               @unique
-  inviteUsed             Boolean               @default(false)
-  invitedAt              DateTime?
-  createdAt              DateTime              @default(now())
-  updatedAt              DateTime              @updatedAt
-  // DEPRECATED: Use the boolean fields below instead
-  userIntent             UserIntent            @default(ACTIVELY_LOOKING)
-
-  // New boolean fields for multiple user intents
-  wantsToHireTalent      Boolean               @default(false)
-  wantsToReferTalent     Boolean               @default(false)
-  wantsToConnectPeople   Boolean               @default(false)
-  wantsToMeetPeople      Boolean               @default(false)
-  isActivelyLooking      Boolean               @default(true)
-  availableInvites       Int                   @default(3)
-  charityDonated         Float                 @default(0.0)
-  engagementLevel        EngagementLevel       @default(ACTIVE_SEEKER)
-  reputationScore        Float                 @default(0.0)
-  tier                   NodeTier              @default(CONNECTOR)
-  totalInvitesUsed       Int                   @default(0)
-  userType               UserType              @default(REFERRER)
-  isHiringManager        Boolean               @default(false)
-  cloutScore             Float                 @default(0.0)
-  endorsementsScore      Float                 @default(0.0)
-  networkValue           Float                 @default(0.0)
-  pendingEarnings        Float                 @default(0.0)
-  successfulReferrals    Int                   @default(0)
-  totalEarnings          Float                 @default(0.0)
-  isAdmin                Boolean               @default(false)
-  allocatedTrust         Int                   @default(0)
-  availableTrust         Int                   @default(100)
-  totalTrustPoints       Int                   @default(100)
-  cloutPercentile        Int                   @default(0)
-  accounts               Account[]
-  cloutActivities        CloutActivity[]
-  earningsTransactions   EarningsTransaction[]
-  endorsementReleases    EndorsementRelease[]
-  endorsementsReceived   Endorsement[]         @relation("EndorsementReceived")
-  endorsementsGiven      Endorsement[]         @relation("EndorsementGiven")
-  introductionsMade      Introduction[]        @relation("IntroductionMaker")
-  introductionsAsPersonA Introduction[]        @relation("IntroductionPersonA")
-  introductionsAsPersonB Introduction[]        @relation("IntroductionPersonB")
-  receivedInvitations    Invitation[]          @relation("InviteReceiver")
-  sentInvitations        Invitation[]          @relation("InviteSender")
-  applications           JobApplication[]
-  ownedJobs              Job[]
-  relationshipsAsUser1   Relationship[]        @relation("RelationshipUser1")
-  relationshipsAsUser2   Relationship[]        @relation("RelationshipUser2")
-  sessions               Session[]
-  referredBy             User?                 @relation("UserReferrals", fields: [referredById], references: [id])
-  referrals              User[]                @relation("UserReferrals")
-
-  // EigenTrust relations
-  trustAllocationsGiven    TrustAllocation[]   @relation("TrustGiver")
-  trustAllocationsReceived TrustAllocation[]   @relation("TrustReceiver")
+  id                       String                @id @default(cuid())
+  email                    String                @unique
+  emailVerified            DateTime?
+  firstName                String?
+  lastName                 String?
+  profileImage             String?
+  phone                    String?
+  location                 String?
+  linkedinUrl              String?
+  bio                      String?
+  skills                   String[]              @default([])
+  experience               String?
+  isProfileComplete        Boolean               @default(false)
+  referralCode             String                @unique @default(cuid())
+  referredById             String?
+  inviteToken              String?               @unique
+  inviteUsed               Boolean               @default(false)
+  invitedAt                DateTime?
+  createdAt                DateTime              @default(now())
+  updatedAt                DateTime              @updatedAt
+  userIntent               UserIntent            @default(ACTIVELY_LOOKING)
+  availableInvites         Int                   @default(3)
+  charityDonated           Float                 @default(0.0)
+  engagementLevel          EngagementLevel       @default(ACTIVE_SEEKER)
+  reputationScore          Float                 @default(0.0)
+  tier                     NodeTier              @default(CONNECTOR)
+  totalInvitesUsed         Int                   @default(0)
+  userType                 UserType              @default(REFERRER)
+  isHiringManager          Boolean               @default(false)
+  cloutScore               Float                 @default(0.0)
+  endorsementsScore        Float                 @default(0.0)
+  networkValue             Float                 @default(0.0)
+  pendingEarnings          Float                 @default(0.0)
+  successfulReferrals      Int                   @default(0)
+  totalEarnings            Float                 @default(0.0)
+  isAdmin                  Boolean               @default(false)
+  allocatedTrust           Int                   @default(0)
+  availableTrust           Int                   @default(100)
+  totalTrustPoints         Int                   @default(100)
+  cloutPercentile          Int                   @default(0)
+  isActivelyLooking        Boolean               @default(true)
+  wantsToConnectPeople     Boolean               @default(false)
+  wantsToHireTalent        Boolean               @default(false)
+  wantsToMeetPeople        Boolean               @default(false)
+  wantsToReferTalent       Boolean               @default(false)
+  accounts                 Account[]
+  cloutActivities          CloutActivity[]
   computedTrustScore       ComputedTrustScore?
-
-  // Referral chain relations
-  forwardsSent       JobForward[] @relation("ForwardsSent")
-  forwardsReceived   JobForward[] @relation("ForwardsReceived")
-  referralsMade      Referral[]   @relation("ReferralsMade")
-  referralsAsCandidate Referral[] @relation("ReferralsAsCandidate")
+  earningsTransactions     EarningsTransaction[]
+  endorsementReleases      EndorsementRelease[]
+  endorsementsReceived     Endorsement[]         @relation("EndorsementReceived")
+  endorsementsGiven        Endorsement[]         @relation("EndorsementGiven")
+  introductionsMade        Introduction[]        @relation("IntroductionMaker")
+  introductionsAsPersonA   Introduction[]        @relation("IntroductionPersonA")
+  introductionsAsPersonB   Introduction[]        @relation("IntroductionPersonB")
+  receivedInvitations      Invitation[]          @relation("InviteReceiver")
+  sentInvitations          Invitation[]          @relation("InviteSender")
+  applications             JobApplication[]
+  ownedJobs                Job[]
+  relationshipsAsUser1     Relationship[]        @relation("RelationshipUser1")
+  relationshipsAsUser2     Relationship[]        @relation("RelationshipUser2")
+  sessions                 Session[]
+  trustAllocationsGiven    TrustAllocation[]     @relation("TrustGiver")
+  trustAllocationsReceived TrustAllocation[]     @relation("TrustReceiver")
+  jobForwardsSent          JobForward[]          @relation("JobForwardFrom")
+  jobForwardsReceived      JobForward[]          @relation("JobForwardTo")
+  referralsAsCandidate     Referral[]            @relation("ReferralCandidate")
+  referralsAsReferrer      Referral[]            @relation("ReferralReferrer")
+  referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
+  referrals                User[]                @relation("UserReferrals")
 
   @@map("users")
 }
@@ -177,48 +170,48 @@ model Company {
 }
 
 model Job {
-  id                   String                @id @default(cuid())
-  title                String
-  description          String?
-  requirements         String[]              @default([])
-  location             String?
-  remote               Boolean               @default(false)
-  salaryMin            Int?
-  salaryMax            Int?
-  currency             String                @default("USD")
-  companyId            String
-  ownerId              String
-  createdAt            DateTime              @default(now())
-  updatedAt            DateTime              @updatedAt
-  archetypes           String?
-  commonMismatches     String?
-  dayToDayDescription  String?
-  equityOffered        Boolean               @default(false)
-  equityRange          String?
-  excitingWork         String?
-  flexibleRequirements String?
-  growthPath           String?
-  locationCity         String?
-  locationType         LocationType          @default(REMOTE)
-  mustHaves            String?
-  nonWorkSignals       String?
+  id                      String                @id @default(cuid())
+  title                   String
+  description             String?
+  requirements            String[]              @default([])
+  location                String?
+  remote                  Boolean               @default(false)
+  salaryMin               Int?
+  salaryMax               Int?
+  currency                String                @default("USD")
+  companyId               String
+  ownerId                 String
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+  archetypes              String?
+  commonMismatches        String?
+  dayToDayDescription     String?
+  equityOffered           Boolean               @default(false)
+  equityRange             String?
+  excitingWork            String?
+  flexibleRequirements    String?
+  growthPath              String?
+  locationCity            String?
+  locationType            LocationType          @default(REMOTE)
+  mustHaves               String?
+  nonWorkSignals          String?
+  publishedAt             DateTime?
+  referralBudget          Int?
+  referralPreference      ReferralPreference    @default(MANUAL_SCREEN)
+  roleChallenges          String?
+  specialOpportunity      String?
+  workingStyle            String?
+  status                  JobPostingStatus      @default(DRAFT)
   organizationDescription String?
-  publishedAt          DateTime?
-  referralBudget       Int?
-  referralPreference   ReferralPreference    @default(MANUAL_SCREEN)
-  roleChallenges       String?
-  specialOpportunity   String?
-  workingStyle         String?
-  status               JobPostingStatus      @default(DRAFT)
-  cloutActivities      CloutActivity[]
-  earningsTransactions EarningsTransaction[]
-  endorsementReleases  EndorsementRelease[]
-  endorsements         Endorsement[]
-  applications         JobApplication[]
-  forwards             JobForward[]
-  referrals            Referral[]
-  company              Company               @relation(fields: [companyId], references: [id])
-  owner                User                  @relation(fields: [ownerId], references: [id])
+  cloutActivities         CloutActivity[]
+  earningsTransactions    EarningsTransaction[]
+  endorsementReleases     EndorsementRelease[]
+  endorsements            Endorsement[]
+  applications            JobApplication[]
+  company                 Company               @relation(fields: [companyId], references: [id])
+  owner                   User                  @relation(fields: [ownerId], references: [id])
+  jobForwards             JobForward[]
+  referrals               Referral[]
 
   @@map("jobs")
 }
@@ -242,30 +235,23 @@ model Endorsement {
   endorserId           String
   endorsedUserId       String?
   endorsedUserEmail    String
-
-  // Legacy field for backward compatibility
   endorsementContent   String?
-
-  // Detailed endorsement fields
-  relationship         String?
-  workTogether         String?
-  strengths            String?
-  rolesValueAdd        String?
-  workOutput           String?
-  hoursInteraction     String?
-  complementaryPartner String?
-  recommendation       String?
-
-  // Job referral fields
-  jobId                String?
-  isJobReferral        Boolean              @default(false)
-
   videoUrl             String?
   status               EndorsementStatus    @default(PENDING_CANDIDATE_ACTION)
   candidateNotifiedAt  DateTime?
   candidateRespondedAt DateTime?
   createdAt            DateTime             @default(now())
   updatedAt            DateTime             @updatedAt
+  complementaryPartner String?
+  hoursInteraction     String?
+  isJobReferral        Boolean              @default(false)
+  jobId                String?
+  recommendation       String?
+  relationship         String?
+  rolesValueAdd        String?
+  strengths            String?
+  workOutput           String?
+  workTogether         String?
   cloutActivities      CloutActivity[]
   releases             EndorsementRelease[]
   endorsedUser         User?                @relation("EndorsementReceived", fields: [endorsedUserId], references: [id])
@@ -344,54 +330,6 @@ model Introduction {
   @@map("introductions")
 }
 
-model JobForward {
-  id         String   @id @default(cuid())
-  jobId      String
-  fromNodeId String
-  toNodeId   String
-  message    String?  // Optional message included with forward
-  createdAt  DateTime @default(now())
-
-  job      Job  @relation(fields: [jobId], references: [id])
-  fromNode User @relation("ForwardsSent", fields: [fromNodeId], references: [id])
-  toNode   User @relation("ForwardsReceived", fields: [toNodeId], references: [id])
-
-  @@unique([jobId, fromNodeId, toNodeId])
-  @@index([jobId, toNodeId])
-  @@map("job_forwards")
-}
-
-model Referral {
-  id              String         @id @default(cuid())
-  jobId           String
-  candidateId     String
-  candidateEmail  String
-  referrerNodeId  String
-
-  // Materialized chain: ordered array of node IDs from start to referrer
-  chainPath       String[]       // Array of user IDs
-  chainDepth      Int           // Length of chain - 1
-
-  // Referral details
-  howYouKnow      String?
-  confidenceLevel String?       // high, medium, low
-  notes           String?
-
-  status          ReferralStatus @default(PENDING)
-
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @updatedAt
-
-  job           Job   @relation(fields: [jobId], references: [id])
-  candidate     User? @relation("ReferralsAsCandidate", fields: [candidateId], references: [id])
-  referrerNode  User  @relation("ReferralsMade", fields: [referrerNodeId], references: [id])
-
-  @@unique([jobId, candidateEmail])
-  @@index([jobId])
-  @@index([status])
-  @@map("referrals")
-}
-
 model SystemConfig {
   id                   String    @id @default("system_config")
   eigentrustAlpha      Float     @default(0.15)
@@ -405,6 +343,83 @@ model SystemConfig {
   updatedAt            DateTime  @updatedAt
 
   @@map("system_config")
+}
+
+model TrustAllocation {
+  id         String   @id @default(cuid())
+  giverId    String
+  receiverId String
+  proportion Float
+  updatedAt  DateTime @default(now()) @updatedAt
+  createdAt  DateTime @default(now())
+  giver      User     @relation("TrustGiver", fields: [giverId], references: [id], onDelete: Cascade)
+  receiver   User     @relation("TrustReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
+
+  @@unique([giverId, receiverId])
+  @@map("trust_allocations")
+}
+
+model ComputedTrustScore {
+  id             String   @id @default(cuid())
+  userId         String   @unique
+  trustScore     Float
+  displayScore   Int
+  rank           Int
+  iterationCount Int
+  computedAt     DateTime @default(now())
+  user           User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("computed_trust_scores")
+}
+
+model TrustComputationLog {
+  id                   String   @id @default(cuid())
+  numUsers             Int
+  numIterations        Int
+  convergenceThreshold Float
+  decayFactor          Float
+  converged            Boolean
+  triggeredBy          String
+  computedAt           DateTime @default(now())
+
+  @@map("trust_computation_logs")
+}
+
+model JobForward {
+  id         String   @id @default(cuid())
+  jobId      String
+  fromNodeId String
+  toNodeId   String
+  message    String?
+  createdAt  DateTime @default(now())
+
+  job        Job      @relation(fields: [jobId], references: [id])
+  fromNode   User     @relation("JobForwardFrom", fields: [fromNodeId], references: [id])
+  toNode     User     @relation("JobForwardTo", fields: [toNodeId], references: [id])
+
+  @@unique([jobId, fromNodeId, toNodeId])
+  @@map("job_forwards")
+}
+
+model Referral {
+  id              String         @id @default(cuid())
+  jobId           String
+  candidateId     String
+  referrerNodeId  String
+  chainPath       String[]
+  chainDepth      Int
+  status          ReferralStatus @default(PENDING)
+  confidenceLevel String?
+  howYouKnow      String?
+  notes           String?
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+
+  job             Job            @relation(fields: [jobId], references: [id])
+  candidate       User           @relation("ReferralCandidate", fields: [candidateId], references: [id])
+  referrer        User           @relation("ReferralReferrer", fields: [referrerNodeId], references: [id])
+
+  @@map("referrals")
 }
 
 enum JobStatus {
@@ -423,13 +438,13 @@ enum ApplicationStatus {
 }
 
 enum UserIntent {
+  RECOMMEND_ONLY
+  HYBRID
+  ACTIVELY_LOOKING
   HIRE_TALENT
   REFER_TALENT
   CONNECT_PEOPLE
   MEET_PEOPLE
-  ACTIVELY_LOOKING
-  RECOMMEND_ONLY
-  HYBRID
 }
 
 enum UserType {
@@ -529,55 +544,8 @@ enum IntroductionStatus {
 
 enum ReferralStatus {
   PENDING
+  REJECTED
   SCREENING
   INTERVIEWING
   HIRED
-  REJECTED
-}
-
-// =============== EIGENTRUST TABLES ===============
-
-// INPUT: Trust allocations (what users assign)
-model TrustAllocation {
-  id         String   @id @default(cuid())
-  giverId    String   // User who is allocating trust
-  receiverId String   // User receiving the trust
-  proportion Float    // 0.0-1.0, giver's allocations must sum to 1.0
-  updatedAt  DateTime @updatedAt @default(now())
-  createdAt  DateTime @default(now())
-
-  giver    User @relation("TrustGiver", fields: [giverId], references: [id], onDelete: Cascade)
-  receiver User @relation("TrustReceiver", fields: [receiverId], references: [id], onDelete: Cascade)
-
-  @@unique([giverId, receiverId])
-  @@map("trust_allocations")
-}
-
-// OUTPUT: Computed trust scores (result of algorithm)
-model ComputedTrustScore {
-  id             String   @id @default(cuid())
-  userId         String   @unique
-  trustScore     Float    // 0.0-1.0 (raw score from algorithm)
-  displayScore   Int      // trustScore * 100 (for UI display)
-  rank           Int      // 1, 2, 3, ... (sorted by trustScore)
-  iterationCount Int      // How many iterations until convergence
-  computedAt     DateTime @default(now())
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@map("computed_trust_scores")
-}
-
-// Logging for debugging
-model TrustComputationLog {
-  id                   String   @id @default(cuid())
-  numUsers             Int
-  numIterations        Int      // How many EigenTrust iterations
-  convergenceThreshold Float
-  decayFactor          Float    // alpha value
-  converged            Boolean
-  triggeredBy          String   // "manual" | "user_update" | "initialization"
-  computedAt           DateTime @default(now())
-
-  @@map("trust_computation_logs")
 }

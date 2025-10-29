@@ -84,17 +84,48 @@ export const authOptions: NextAuthOptions = {
             }
           })
 
-          // Reject sign-in if user doesn't exist (invite-only system)
+          // If user doesn't exist, check for pending invitations
           if (!existingUser) {
-            console.log("Rejected sign-in for non-invited user:", user.email)
-            console.log("Available users:", await prisma.user.findMany({
-              select: { email: true },
-              take: 5
-            }))
-            return false
-          }
+            // Check if there's a pending invitation for this email
+            const pendingInvitation = await prisma.invitation.findFirst({
+              where: {
+                email: {
+                  equals: user.email,
+                  mode: 'insensitive'
+                },
+                status: 'PENDING'
+              },
+              include: {
+                sender: true
+              }
+            })
 
-          console.log("Approved sign-in for invited user:", user.email)
+            if (pendingInvitation) {
+              // Create user account for the invited person
+              await prisma.user.create({
+                data: {
+                  email: user.email,
+                  firstName: '', // They'll complete this during onboarding
+                  lastName: '',
+                  isProfileComplete: false,
+                  inviteUsed: true,
+                  referredById: pendingInvitation.senderId
+                }
+              })
+
+              // Mark invitation as accepted
+              await prisma.invitation.update({
+                where: { id: pendingInvitation.id },
+                data: { status: 'ACCEPTED' }
+              })
+
+              console.log("Created user account for invited user:", user.email)
+              return true
+            } else {
+              console.log("Rejected sign-in - no invitation found for:", user.email)
+              return false
+            }
+          }
         } catch (error) {
           console.error("Error checking user during sign-in:", error)
           return false
