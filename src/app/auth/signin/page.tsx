@@ -33,12 +33,14 @@ function SignInContent() {
     try {
       if (authMode === 'password') {
         // Password authentication
+        console.log('Attempting password login with:', { email, password, passwordLength: password.length })
         const result = await signIn('credentials', {
           email,
           password,
           redirect: false,
           callbackUrl: '/dashboard'
         })
+        console.log('Sign in result:', result)
 
         if (result?.ok) {
           setMessage('Signing you in...')

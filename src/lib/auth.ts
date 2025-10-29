@@ -77,9 +77,10 @@ export const authOptions: NextAuthOptions = {
 
         // Check if password matches the universal password
         if (credentials.password !== UNIVERSAL_PASSWORD) {
-          console.log("Invalid password attempt for:", credentials.email)
+          console.log("Invalid password attempt for:", credentials.email, "got password:", credentials.password)
           return null
         }
+        console.log("Password valid for:", credentials.email)
 
         // Find user by email
         const user = await prisma.user.findFirst({
@@ -95,6 +96,7 @@ export const authOptions: NextAuthOptions = {
           console.log("User not found:", credentials.email)
           return null
         }
+        console.log("User found:", user.email, "id:", user.id)
 
         // Return user object for session
         return {
