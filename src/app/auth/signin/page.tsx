@@ -50,6 +50,7 @@ function SignInContent() {
         }
       } else {
         // Magic link authentication
+        console.log('🔥 Attempting magic link for:', email)
         // If there's an invite token, validate the email first
         if (inviteToken) {
           const response = await fetch('/api/auth/validate-invite', {
@@ -72,6 +73,8 @@ function SignInContent() {
           redirect: false,
           callbackUrl: inviteToken ? `/onboard?token=${inviteToken}` : '/dashboard'
         })
+
+        console.log('🔥 signIn result:', result)
 
         if (result?.ok) {
           setMessage('Check your email for a magic link!')

@@ -17,7 +17,7 @@ import { getResend } from "./resend"
 import type { NextAuthOptions } from "next-auth"
 
 export const authOptions: NextAuthOptions = {
-  // Use Prisma adapter for email provider support, but handle credentials separately
+  // CRITICAL: Email provider requires database adapter
   adapter: PrismaAdapter(prisma),
 
   providers: [
