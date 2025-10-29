@@ -67,8 +67,10 @@ export async function POST(request: NextRequest) {
 
     const isExistingUser = !!delegateUser
 
+    let forwardToUserId = delegateUser?.id
+
     if (!isExistingUser) {
-      // User is not on Clout - create invitation
+      // User is not on Clout - create invitation and placeholder user for chain tracking
       const existingInvitation = await prisma.invitation.findFirst({
         where: {
           email: delegateEmail,
@@ -86,17 +88,43 @@ export async function POST(request: NextRequest) {
           }
         })
       }
-    } else {
-      // User is on platform - record the forward in chain tracking
+
+      // Check if user already exists (might have been created by previous forward or auth)
+      const existingUser = await prisma.user.findUnique({
+        where: { email: delegateEmail }
+      })
+
+      if (!existingUser) {
+        // Create user account for referral chain tracking
+        const newUser = await prisma.user.create({
+          data: {
+            email: delegateEmail,
+            firstName: delegateName.split(' ')[0] || '',
+            lastName: delegateName.split(' ').slice(1).join(' ') || '',
+            isProfileComplete: false,
+            inviteUsed: false, // Will be set to true when they complete signup
+            referredById: currentUser.id
+          }
+        })
+        forwardToUserId = newUser.id
+      } else {
+        forwardToUserId = existingUser.id
+      }
+    }
+
+    // Record the forward in chain tracking for both existing and new users
+    if (forwardToUserId) {
       try {
-        await forwardJob(jobId, currentUser.id, delegateUser.id, message)
+        await forwardJob(jobId, currentUser.id, forwardToUserId, message)
       } catch (forwardError: any) {
         // If forward already exists, that's okay - just continue
         if (!forwardError.message?.includes('duplicate')) {
           throw forwardError
         }
       }
+    }
 
+    if (isExistingUser && delegateUser) {
       // Check if they're in the network
       const relationship = await prisma.relationship.findFirst({
         where: {
