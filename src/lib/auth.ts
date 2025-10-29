@@ -81,9 +81,8 @@ export const authOptions: NextAuthOptions = {
   },
 
   callbacks: {
-    // INVITE-ONLY ENFORCEMENT
-    // This callback runs every time someone tries to sign in
-    // We check if they exist in our database first - if not, reject them
+    // SIMPLE USER EXISTENCE CHECK
+    // Only allow sign-in if user exists in database
     async signIn({ user, account, profile, email, credentials }) {
       if (user.email) {
         try {
@@ -97,56 +96,12 @@ export const authOptions: NextAuthOptions = {
             }
           })
 
-          // If user doesn't exist OR exists but hasn't completed signup, check for pending invitations
-          if (!existingUser || !existingUser.inviteUsed) {
-            // Check if there's a pending invitation for this email
-            const pendingInvitation = await prisma.invitation.findFirst({
-              where: {
-                email: {
-                  equals: user.email,
-                  mode: 'insensitive'
-                },
-                status: 'PENDING'
-              },
-              include: {
-                sender: true
-              }
-            })
-
-            if (pendingInvitation) {
-              if (!existingUser) {
-                // Create user account for the invited person
-                await prisma.user.create({
-                  data: {
-                    email: user.email,
-                    firstName: '', // They'll complete this during onboarding
-                    lastName: '',
-                    isProfileComplete: false,
-                    inviteUsed: true,
-                    referredById: pendingInvitation.senderId
-                  }
-                })
-                console.log("Created user account for invited user:", user.email)
-              } else {
-                // User exists but hasn't completed signup - activate them
-                await prisma.user.update({
-                  where: { id: existingUser.id },
-                  data: { inviteUsed: true }
-                })
-                console.log("Activated existing user account for:", user.email)
-              }
-
-              // Mark invitation as accepted
-              await prisma.invitation.update({
-                where: { id: pendingInvitation.id },
-                data: { status: 'ACCEPTED' }
-              })
-
-              return true
-            } else {
-              console.log("Rejected sign-in - no invitation found for:", user.email)
-              return false
-            }
+          if (existingUser) {
+            console.log("User found, allowing sign-in:", user.email)
+            return true
+          } else {
+            console.log("User not found, rejecting sign-in:", user.email)
+            return false
           }
         } catch (error) {
           console.error("Error checking user during sign-in:", error)
@@ -154,7 +109,7 @@ export const authOptions: NextAuthOptions = {
         }
       }
 
-      return true
+      return false
     },
 
     // SESSION ENRICHMENT
