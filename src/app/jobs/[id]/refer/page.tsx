@@ -8,7 +8,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import PotentialEarningsPreview from '@/components/PotentialEarningsPreview'
 import { reconstructChain } from '@/lib/referral-chain'
@@ -43,13 +43,9 @@ interface FormData {
   recommendation: string
 }
 
-interface ReferralPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function JobReferralPage({ params }: ReferralPageProps) {
+export default function JobReferralPage() {
+  const params = useParams()
+  const id = params.id as string
   const [job, setJob] = useState<Job | null>(null)
   const [trustedContacts, setTrustedContacts] = useState<TrustedContact[]>([])
   const [loading, setLoading] = useState(true)
@@ -90,7 +86,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
     const fetchData = async () => {
       try {
         // Fetch job details
-        const jobResponse = await fetch(`/api/jobs/${params.id}`)
+        const jobResponse = await fetch(`/api/jobs/${id}`)
         if (jobResponse.ok) {
           const jobData = await jobResponse.json()
           setJob(jobData.job)
@@ -111,7 +107,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
         // Fetch current chain length for user
         if (session?.user?.id) {
           try {
-            const chainPath = await reconstructChain(params.id, session.user.id)
+            const chainPath = await reconstructChain(id, session.user.id)
             setCurrentChainLength(chainPath.length)
           } catch (error) {
             console.error('Error reconstructing chain:', error)
@@ -130,7 +126,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
     if (session) {
       fetchData()
     }
-  }, [params.id, session])
+  }, [id, session])
 
   const handleInputChange = (field: keyof FormData, value: string) => {
     setFormData(prev => ({ ...prev, [field]: value }))
@@ -202,7 +198,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            jobId: params.id,
+            jobId: id,
             ...formData,
             referrerEmail: session?.user?.email,
             referrerName: `${session?.user?.firstName || ''} ${session?.user?.lastName || ''}`.trim()
@@ -234,7 +230,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            jobId: params.id,
+            jobId: id,
             ...delegateForm
           })
         })
@@ -249,7 +245,11 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
             message: ''
           })
         } else {
-          setError(data.error || 'Failed to send delegation')
+          if (data.error === 'You cannot delegate a job to yourself.') {
+            setError('You cannot delegate this job to yourself. Please choose a different person.')
+          } else {
+            setError(data.error || 'Failed to send delegation')
+          }
         }
       }
     } catch (error) {
@@ -301,7 +301,7 @@ export default function JobReferralPage({ params }: ReferralPageProps) {
             </p>
             <div className="space-y-3">
               <button
-                onClick={() => router.push(`/jobs/${job.id}`)}
+                onClick={() => router.push(`/jobs/${id}`)}
                 className="w-full px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700"
               >
                 Back to Job Details

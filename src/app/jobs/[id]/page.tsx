@@ -8,7 +8,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, useParams } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 
 interface JobDetail {
@@ -53,26 +53,27 @@ interface JobDetail {
   }
 }
 
-interface JobDetailPageProps {
-  params: {
-    id: string
-  }
-}
-
-export default function JobDetailPage({ params }: JobDetailPageProps) {
+export default function JobDetailPage() {
+  const params = useParams()
+  const id = params.id as string
   const [job, setJob] = useState<JobDetail | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [hasApplied, setHasApplied] = useState(false)
+  const [isApplying, setIsApplying] = useState(false)
+  const [applyError, setApplyError] = useState<string | null>(null)
   const { data: session } = useSession()
   const router = useRouter()
 
   useEffect(() => {
     const fetchJob = async () => {
+      if (!id) return
       try {
-        const response = await fetch(`/api/jobs/${params.id}`)
+        const response = await fetch(`/api/jobs/${id}`)
         if (response.ok) {
           const data = await response.json()
           setJob(data.job)
+          setHasApplied(data.hasApplied)
         } else if (response.status === 404) {
           setError('Job not found')
         } else {
@@ -87,7 +88,7 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     }
 
     fetchJob()
-  }, [params.id])
+  }, [id])
 
   const getLocationDisplay = (locationType: string, locationCity?: string) => {
     switch (locationType) {
@@ -108,6 +109,45 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
     if (min) return `${currency} ${min.toLocaleString()}+`
     if (max) return `Up to ${currency} ${max.toLocaleString()}`
     return 'Competitive'
+  }
+
+
+  const handleApply = async () => {
+    if (!session?.user) {
+      router.push('/api/auth/signin')
+      return
+    }
+
+    setIsApplying(true)
+    setApplyError(null)
+
+    try {
+      const response = await fetch(`/api/jobs/${id}/apply`, {
+        method: 'POST',
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setHasApplied(true)
+        setJob(prevJob => {
+          if (!prevJob) return null
+          return {
+            ...prevJob,
+            _count: {
+              ...prevJob._count,
+              applications: prevJob._count.applications + 1,
+            },
+          }
+        })
+      } else {
+        setApplyError(data.error || 'Failed to apply. Please try again.')
+      }
+    } catch (error) {
+      setApplyError('An unexpected error occurred. Please try again.')
+    } finally {
+      setIsApplying(false)
+    }
   }
 
   if (loading) {
@@ -138,6 +178,15 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
   return (
     <div className="min-h-screen bg-gray-50">
       <div className="max-w-4xl mx-auto py-8 px-4 sm:px-6 lg:px-8">
+        <div className="mb-4">
+          <button
+            onClick={() => router.push('/jobs')}
+            className="text-sm text-gray-600 hover:text-gray-800 flex items-center"
+          >
+            <svg className="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path></svg>
+            Back to Jobs
+          </button>
+        </div>
         {/* Header */}
         <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-8 mb-6">
           <div className="flex items-start justify-between mb-6">
@@ -206,10 +255,15 @@ export default function JobDetailPage({ params }: JobDetailPageProps) {
                 </svg>
                 Forward Request
               </button>
-              <button className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-                Apply Now
+              <button
+                onClick={handleApply}
+                disabled={hasApplied || isApplying}
+                className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors disabled:bg-gray-400 disabled:cursor-not-allowed"
+              >
+                {isApplying ? 'Applying...' : hasApplied ? 'Applied' : 'Apply Now'}
               </button>
             </div>
+            {applyError && <p className="text-red-500 text-sm mt-2 text-right">{applyError}</p>}
           </div>
         </div>
 
