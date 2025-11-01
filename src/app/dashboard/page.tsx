@@ -75,7 +75,18 @@ export default function DashboardPage() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {endorsements.map((endorsement) => (
               <div key={endorsement.id} className="bg-white border border-gray-200 rounded-lg p-4">
-                {/* ... endorsement card UI ... */}
+                {endorsement.endorsedUser ? (
+                  <>
+                    <h4 className="font-bold">
+                      {endorsement.endorsedUser.firstName && endorsement.endorsedUser.lastName
+                        ? `${endorsement.endorsedUser.firstName} ${endorsement.endorsedUser.lastName}`
+                        : endorsement.endorsedUser.email}
+                    </h4>
+                    <p className="text-sm text-gray-500">{endorsement.endorsedUser.email}</p>
+                  </>
+                ) : (
+                  <p className="text-sm text-gray-500">{endorsement.endorsedUserEmail}</p>
+                )}
               </div>
             ))}
           </div>
