@@ -12,10 +12,10 @@ interface NetworkMember {
 }
 
 interface TrustNetworkManagerProps {
-  onRefresh: () => void
+
 }
 
-export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerProps) {
+export default function TrustNetworkManager({}: TrustNetworkManagerProps) {
   const [members, setMembers] = useState<NetworkMember[]>([])
   const [allocations, setAllocations] = useState<Record<string, number>>({})
   const [newMemberEmail, setNewMemberEmail] = useState('')
@@ -23,6 +23,7 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
   const [saving, setSaving] = useState(false)
   const [message, setMessage] = useState('')
   const [showAddMember, setShowAddMember] = useState(false)
+  const [showSuccessMessage, setShowSuccessMessage] = useState(false)
 
   // Calculate totals (only count explicit allocations to network members)
   const totalAllocatedToNetwork = useMemo(() => {
@@ -177,11 +178,13 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
       }
 
       setMessage('Trust allocations saved successfully!')
-      setTimeout(() => setMessage(''), 3000)
+      setShowSuccessMessage(true)
+      setTimeout(() => {
+        setMessage('')
+        setShowSuccessMessage(false)
+      }, 3000)
 
       // Refresh data
-      fetchNetworkData()
-      onRefresh()
     } catch (error) {
       console.error('Error saving allocations:', error)
       setMessage(error instanceof Error ? error.message : 'Failed to save allocations')
@@ -213,7 +216,6 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
         setNewMemberEmail('')
         setShowAddMember(false)
         fetchNetworkData()
-        onRefresh()
       } else {
         setMessage(data.error || 'Failed to add member')
       }
@@ -329,8 +331,7 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
         </div>
       )}
 
-      {/* Message */}
-      {message && (
+      {showSuccessMessage && (
         <div className={`p-4 ${
           message.includes('success') ? 'bg-green-50 text-green-800' :
           message.includes('Failed') || message.includes('Maximum') ? 'bg-red-50 text-red-800' :
@@ -339,6 +340,8 @@ export default function TrustNetworkManager({ onRefresh }: TrustNetworkManagerPr
           {message}
         </div>
       )}
+
+      {/* Message */}
 
       {/* Network Members List */}
       <div className="divide-y divide-gray-200">

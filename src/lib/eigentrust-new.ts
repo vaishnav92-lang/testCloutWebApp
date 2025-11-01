@@ -326,6 +326,9 @@ export async function computeEigenTrust(
         triggeredBy: triggeredBy
       }
     })
+  }, {
+    maxWait: 10000,
+    timeout: 10000,
   })
 
   console.log(`✓ Saved ${n} computed scores to database`)
