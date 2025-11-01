@@ -303,17 +303,15 @@ export async function computeEigenTrust(
     await tx.computedTrustScore.deleteMany({})
 
     // Insert new computed scores
-    for (const score of scores) {
-      await tx.computedTrustScore.create({
-        data: {
-          userId: score.userId,
-          trustScore: score.trustScore,
-          displayScore: score.displayScore,
-          rank: score.rank,
-          iterationCount: iterationCount
-        }
-      })
-    }
+    await tx.computedTrustScore.createMany({
+      data: scores.map(score => ({
+        userId: score.userId,
+        trustScore: score.trustScore,
+        displayScore: score.displayScore,
+        rank: score.rank,
+        iterationCount: iterationCount
+      }))
+    })
 
     // Log this computation
     await tx.trustComputationLog.create({
@@ -326,6 +324,9 @@ export async function computeEigenTrust(
         triggeredBy: triggeredBy
       }
     })
+  }, {
+    maxWait: 10000,
+    timeout: 10000,
   })
 
   console.log(`✓ Saved ${n} computed scores to database`)
