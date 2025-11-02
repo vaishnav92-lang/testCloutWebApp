@@ -136,7 +136,8 @@ export async function POST(request: NextRequest) {
         jobTitle: job.title,
         companyName: job.company.name,
         referralReason: referralReason,
-        personalMessage: message
+        personalMessage: message,
+        jobId: jobId
       })
     } catch (emailError) {
       console.error('Failed to send job referral email:', emailError)

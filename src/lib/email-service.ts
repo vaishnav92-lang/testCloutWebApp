@@ -24,6 +24,7 @@ interface JobReferralEmailData {
   companyName: string
   referralReason?: string
   personalMessage?: string
+  jobId?: string
 }
 
 interface DelegationEmailData {
@@ -135,7 +136,9 @@ export async function sendInvitationEmail(data: InvitationEmailData) {
 export async function sendJobReferralEmail(data: JobReferralEmailData) {
   const resend = getResend()
 
-  const jobLink = `${BASE_URL}/jobs` // They'll need to log in to see the specific job
+  const jobLink = data.jobId
+    ? `${BASE_URL}/jobs/${data.jobId}`
+    : `${BASE_URL}/jobs` // Fallback if jobId not provided
 
   const html = `
     <!DOCTYPE html>
