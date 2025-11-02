@@ -610,3 +610,37 @@ to /dashboard.
   Sound good?
 
 > Ok. 
+
+
+
+
+
+
+
+
+Test accounts:
+- Company Admin (TechCorp): admin@techcorp.com
+- Company Employee (TechCorp): engineer@techcorp.com
+- Company Admin (Design): admin@designstudio.com
+- Network User (no company): freelancer@network.com
+
+
+
+
+
+
+  2. Phase 1 - Vetting:
+    - Log in as alice@research.com
+    - Go to /grants → View the grant round
+    - Click "Apply" → See pre-filled contributions in Steps 1-3
+
+  Phase 2 - Trust Allocation:
+    - Log in as grantadmin@clout.com
+    - Go to /admin/grants → Select the grant → Click "Advance to Next Phase"
+    - Log in as alice@research.com
+    - Go to /grants/apply → Step 2 → Allocate 100 trust points to other applicants → Save
+    - Do the same as bob/carol/diana/evan
+
+  Phase 3 - Results:
+    - Admin logs in → /admin/grants → Advance phase again
+    - Click "Compute Allocations" → See recommended funding based on trust allocations

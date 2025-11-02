@@ -84,6 +84,8 @@ model User {
   company                  Company?              @relation("CompanyMembers", fields: [companyId], references: [id])
   referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
   referrals                User[]                @relation("UserReferrals")
+  grantApplications        GrantApplication[]    @relation("GrantApplications")
+  trustedRecommenderFor    TrustedRecommender[]  @relation("TrustedRecommenderFor")
 
   @@map("users")
 }
@@ -575,4 +577,144 @@ enum ProfileVisibility {
   COMPANY_ONLY
   NETWORK
   PUBLIC
+}
+
+enum GrantApplicationStatus {
+  DRAFT
+  SUBMITTED
+  UNDER_REVIEW
+  APPROVED
+  REJECTED
+  FUNDED
+}
+
+enum GrantPhase {
+  PHASE_ONE_VETTING
+  PHASE_TWO_PREDICTIONS
+  PHASE_THREE_REINFORCEMENT
+  FINAL_ALLOCATION
+}
+
+model GrantRound {
+  id                    String                  @id @default(cuid())
+  name                  String
+  description           String?
+  status                GrantPhase              @default(PHASE_ONE_VETTING)
+  totalFunding          Float
+  minimumGrantSize      Float                   @default(1000)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  startDate             DateTime?
+  endDate               DateTime?
+  applications          GrantApplication[]
+  predictions           Prediction[]
+  reinforcements        PredictionReinforcement[]
+  trustedRecommenders   TrustedRecommender[]
+
+  @@map("grant_rounds")
+}
+
+model GrantApplication {
+  id                    String                  @id @default(cuid())
+  grantRoundId          String
+  applicantId           String
+  status                GrantApplicationStatus @default(DRAFT)
+  utilityFunction       String?                 // JSON describing preferences over money amounts
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+  submittedAt           DateTime?
+  allocatedTrust        Float?                  // Result from EigenTrust algorithm
+  recommendedFunding    Float?
+
+  grantRound            GrantRound              @relation(fields: [grantRoundId], references: [id], onDelete: Cascade)
+  applicant             User                    @relation("GrantApplications", fields: [applicantId], references: [id], onDelete: Cascade)
+  contributions         GrantContribution[]
+  predictionsAbout      Prediction[]            @relation("PredictionAbout")
+  predictionsBy         Prediction[]            @relation("PredictionBy")
+  outgoingTrust         GrantTrustAllocation[]  @relation("GrantTrustGiver")
+  incomingTrust         GrantTrustAllocation[]  @relation("GrantTrustReceiver")
+  reinforcedPredictions PredictionReinforcement[] @relation("ReinforcedPredictions")
+
+  @@unique([grantRoundId, applicantId])
+  @@map("grant_applications")
+}
+
+model GrantContribution {
+  id                    String                  @id @default(cuid())
+  applicationId         String
+  title                 String
+  description           String
+  url                   String?
+  yourContribution      String?                 // Description of their role in shared projects
+  proofOfWork           String?                 // Link to evidence of capability
+  isProposal            Boolean                 @default(false) // true if future work, false if past work
+  createdAt             DateTime                @default(now())
+
+  application           GrantApplication       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+
+  @@map("grant_contributions")
+}
+
+model GrantTrustAllocation {
+  id                    String                  @id @default(cuid())
+  fromApplicationId     String
+  toApplicationId       String
+  grantRoundId          String
+  trustScore            Float                   // Normalized to 0-1
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  fromApplication       GrantApplication       @relation("GrantTrustGiver", fields: [fromApplicationId], references: [id], onDelete: Cascade)
+  toApplication         GrantApplication       @relation("GrantTrustReceiver", fields: [toApplicationId], references: [id], onDelete: Cascade)
+
+  @@unique([fromApplicationId, toApplicationId, grantRoundId])
+  @@map("grant_trust_allocations")
+}
+
+model Prediction {
+  id                    String                  @id @default(cuid())
+  grantRoundId          String
+  aboutApplicationId    String
+  byApplicationId       String?                 // null if made by trusted recommender
+  predictionText        String                  // "if ___, then ___" format
+  category              String?                 // e.g., "capability", "follow-through", "reliability"
+  reinforcementCount    Int                     @default(0)
+  createdAt             DateTime                @default(now())
+  updatedAt             DateTime                @updatedAt
+
+  grantRound            GrantRound              @relation(fields: [grantRoundId], references: [id], onDelete: Cascade)
+  aboutApplication      GrantApplication       @relation("PredictionAbout", fields: [aboutApplicationId], references: [id], onDelete: Cascade)
+  byApplication         GrantApplication?      @relation("PredictionBy", fields: [byApplicationId], references: [id], onDelete: SetNull)
+  reinforcements        PredictionReinforcement[]
+
+  @@map("predictions")
+}
+
+model PredictionReinforcement {
+  id                    String                  @id @default(cuid())
+  predictionId          String
+  grantRoundId          String
+  reinforcedByApplicationId String
+  createdAt             DateTime                @default(now())
+
+  prediction            Prediction              @relation(fields: [predictionId], references: [id], onDelete: Cascade)
+  grantRound            GrantRound              @relation(fields: [grantRoundId], references: [id], onDelete: Cascade)
+  reinforcedByApplication GrantApplication     @relation("ReinforcedPredictions", fields: [reinforcedByApplicationId], references: [id], onDelete: Cascade)
+
+  @@unique([predictionId, reinforcedByApplicationId])
+  @@map("prediction_reinforcements")
+}
+
+model TrustedRecommender {
+  id                    String                  @id @default(cuid())
+  grantRoundId          String
+  userId                String
+  initialTrustWeight    Float                   @default(1.0)
+  createdAt             DateTime                @default(now())
+
+  grantRound            GrantRound              @relation(fields: [grantRoundId], references: [id], onDelete: Cascade)
+  user                  User                    @relation("TrustedRecommenderFor", fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([grantRoundId, userId])
+  @@map("trusted_recommenders")
 }
