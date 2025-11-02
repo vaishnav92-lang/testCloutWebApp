@@ -75,6 +75,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                      Hiring Manager
                    </Link>
                   )}
+                  {session.user.isCompanyAdmin && (
+                     <Link href="/dashboard/company"
+                     className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                       pathname === '/dashboard/company'
+                         ? 'border-indigo-500 text-indigo-600'
+                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                     }`}>
+                     Company Board
+                   </Link>
+                  )}
                 </nav>
               </div>
             </div>

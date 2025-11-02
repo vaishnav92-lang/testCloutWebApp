@@ -129,6 +129,7 @@ export const authOptions: NextAuthOptions = {
             inviteUsed: true,
             isHiringManager: true,
             isAdmin: true,
+            isCompanyAdmin: true,
           }
         })
 
@@ -142,6 +143,7 @@ export const authOptions: NextAuthOptions = {
           session.user.inviteUsed = dbUser.inviteUsed
           session.user.isHiringManager = dbUser.isHiringManager
           session.user.isAdmin = dbUser.isAdmin
+          session.user.isCompanyAdmin = dbUser.isCompanyAdmin
         }
       }
 

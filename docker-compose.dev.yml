@@ -1,0 +1,23 @@
+version: '3.8'
+
+services:
+  postgres-dev:
+    image: postgres:16-alpine
+    container_name: clout-dev-db
+    environment:
+      POSTGRES_USER: dev_user
+      POSTGRES_PASSWORD: dev_password
+      POSTGRES_DB: clout_internal_dev
+    ports:
+      - "5433:5432"
+    volumes:
+      - clout_dev_data:/var/lib/postgresql/data
+    networks:
+      - clout-dev
+
+networks:
+  clout-dev:
+    driver: bridge
+
+volumes:
+  clout_dev_data:

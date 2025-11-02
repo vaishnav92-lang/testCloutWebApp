@@ -12,6 +12,7 @@ declare module "next-auth" {
       inviteUsed: boolean
       isHiringManager: boolean
       isAdmin: boolean
+      isCompanyAdmin: boolean
     } & DefaultSession["user"]
   }
 
@@ -24,5 +25,6 @@ declare module "next-auth" {
     inviteUsed: boolean
     isHiringManager: boolean
     isAdmin: boolean
+    isCompanyAdmin: boolean
   }
 }
