@@ -124,3 +124,46 @@
   [id]/status/route.ts, and job-endorsement/route.ts API routes all have TODO comments indicating missing email notification
    logic for candidates, referrers, and hiring managers. In short, the referral process lacks a complete user interface and
   crucial email notifications. Shall I begin by implementing the JobReferralModal UI?
+
+
+
+
+1. No notification to the referred candidate: When you refer someone (especially in refer-trusted mode), they don't seem to get
+notified about the referral. The API endpoints have TODO comments about sending emails, but it's not clear if that's implemented.
+2. No visibility into referral status: Users can't see what happened with their referrals after submitting them. There's no
+dashboard or history showing which referrals were submitted, their status (pending, rejected, hired, etc.), or any feedback.
+3. No earnings tracking: While there's PotentialEarningsPreview showing what they could earn, users don't see actual payouts or
+pending earnings from completed referrals.
+7. No follow-up mechanism: Once a referral is sent, there's no way to check back on it, provide additional information, or update
+the referral if circumstances change.
+
+
+
+
+Can't refer someone more than once:
+
+● Found it! The constraint is on line 263 of the schema:
+
+  @@unique([endorserId, endorsedUserEmail])
+
+  This means you can only have one endorsement per endorser-endorsee pair, regardless of which job it's for. So yes, you can really
+  only refer someone one time, period - not once per job, just once globally.
+
+  The code checks for this constraint at line 107-119 in /api/referrals/job-endorsement/route.ts:
+
+  const existingEndorsement = await prisma.endorsement.findFirst({
+    where: {
+      endorserId: currentUser.id,
+      endorsedUserEmail: candidateEmail
+    }
+  })
+
+  if (existingEndorsement) {
+    return NextResponse.json({
+      error: 'You have already endorsed this person. You can only endorse someone once.'
+    }, { status: 400 })
+  }
+
+  This is a pretty significant business rule limitation - it means if you refer someone to Job A, you can never refer them to Job B,
+   even if they'd be perfect for that role too. That seems like it should probably be changed to allow multiple referrals to the
+  same person but for different jobs.

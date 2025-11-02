@@ -4,12 +4,28 @@ const prisma = new PrismaClient();
 
 async function main() {
   try {
-    const users = await prisma.user.findMany({
-      take: 5,
+    // Find the user with email romanov360@gmail.com
+    const user = await prisma.user.findUnique({
+      where: { email: 'romanov360@gmail.com' }
     });
-    console.log('Users:', users);
+
+    if (!user) {
+      console.log('User romanov360@gmail.com not found');
+      return;
+    }
+
+    console.log('Found user:', user.id, user.email);
+
+    // Delete all endorsements where this user is the endorser
+    const result = await prisma.endorsement.deleteMany({
+      where: {
+        endorserId: user.id
+      }
+    });
+
+    console.log(`Deleted ${result.count} endorsements by romanov360@gmail.com`);
   } catch (e) {
-    console.error('Error querying the database:', e);
+    console.error('Error:', e);
   } finally {
     await prisma.$disconnect();
   }

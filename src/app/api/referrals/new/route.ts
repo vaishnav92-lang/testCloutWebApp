@@ -126,7 +126,8 @@ export async function POST(request: NextRequest) {
           jobTitle: job.title,
           companyName: job.company.name,
           referralReason: referralReason,
-          personalMessage: message
+          personalMessage: message,
+          jobId: jobId
         })
       } catch (emailError) {
         console.error('Failed to send job referral email:', emailError)
@@ -190,7 +191,7 @@ export async function POST(request: NextRequest) {
         recommendation: referralReason,
         // Store additional message if provided
         endorsementContent: message || `Referred for ${job.title} position`,
-        status: 'PENDING',
+        status: 'PENDING_CANDIDATE_ACTION',
         createdAt: new Date()
       }
     })
@@ -211,7 +212,8 @@ export async function POST(request: NextRequest) {
         jobTitle: job.title,
         companyName: job.company.name,
         referralReason: referralReason,
-        personalMessage: message
+        personalMessage: message,
+        jobId: jobId
       })
     } catch (emailError) {
       console.error('Failed to send invitation/referral emails:', emailError)
