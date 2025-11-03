@@ -88,6 +88,7 @@ export async function POST(request: NextRequest) {
             email,
             inviteToken,
             invitedAt: new Date(),
+            isHiringManager: true,
           }
         })
 
