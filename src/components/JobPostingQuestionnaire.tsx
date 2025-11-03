@@ -97,6 +97,7 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
   const [saving, setSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<Date | null>(null)
   const [isLoadingJob, setIsLoadingJob] = useState(!!jobId) // Loading existing job data
+  const [currentJobId, setCurrentJobId] = useState<string | undefined>(jobId) // Track current job ID
   const router = useRouter()
 
   // Load existing job data when editing
@@ -165,8 +166,8 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
 
     setSaving(true)
     try {
-      const response = await fetch(`/api/hiring-manager/jobs${jobId ? `/${jobId}` : ''}`, {
-        method: jobId ? 'PUT' : 'POST',
+      const response = await fetch(`/api/hiring-manager/jobs${currentJobId ? `/${currentJobId}` : ''}`, {
+        method: currentJobId ? 'PUT' : 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           ...formData,
@@ -176,8 +177,9 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
 
       if (response.ok) {
         const data = await response.json()
-        if (!jobId && data.jobId) {
-          // New job created, update URL
+        if (!currentJobId && data.jobId) {
+          // New job created, save the job ID and update URL
+          setCurrentJobId(data.jobId)
           window.history.replaceState(null, '', `/hiring-manager/job/${data.jobId}/edit`)
         }
         setLastSaved(new Date())
@@ -187,7 +189,7 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
     } finally {
       setSaving(false)
     }
-  }, [formData, jobId, currentSection])
+  }, [formData, currentJobId, currentSection])
 
   // Auto-save every 30 seconds
   useEffect(() => {
@@ -938,8 +940,8 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
     const handlePublish = async () => {
       setLoading(true)
       try {
-        const response = await fetch(`/api/hiring-manager/jobs${jobId ? `/${jobId}` : ''}`, {
-          method: jobId ? 'PUT' : 'POST',
+        const response = await fetch(`/api/hiring-manager/jobs${currentJobId ? `/${currentJobId}` : ''}`, {
+          method: currentJobId ? 'PUT' : 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             ...formData,
@@ -951,7 +953,7 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
         if (response.ok) {
           const data = await response.json()
           if (onComplete) {
-            onComplete(data.jobId || jobId!)
+            onComplete(data.jobId || currentJobId!)
           } else {
             router.push('/dashboard?view=hiring-manager')
           }
