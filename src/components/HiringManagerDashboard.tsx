@@ -138,7 +138,7 @@ export default function HiringManagerDashboard({ userInfo, isAdmin }: HiringMana
         <div className="flex items-center justify-between">
           <div>
             <h1 className="text-2xl font-bold text-gray-900 mb-2">
-              Hiring Manager Dashboard
+              Post Opportunities
             </h1>
             <p className="text-gray-600">
               Post jobs that surface illegible talent through our trusted network

@@ -55,6 +55,7 @@ export async function POST(request: NextRequest) {
       wantsToMeetPeople: userIntentArray.includes('MEET_PEOPLE'),
       isActivelyLooking: userIntentArray.includes('ACTIVELY_LOOKING'),
       isProfileComplete: true,
+      isHiringManager: true,
     }
 
     if (inviteToken && user.inviteToken === inviteToken) {
