@@ -13,7 +13,7 @@ export default function SimpleChatbot() {
   const [messages, setMessages] = useState<Message[]>([
     {
       id: '1',
-      text: "Hi! I'm here to help you create a \"water cooler\" job description - the kind that makes people immediately think of specific candidates in their network.\n\nInstead of generic requirements, we'll focus on concrete archetypes and memorable details that trigger recall.\n\nLet's start simple - what role are you hiring for?",
+      text: "Hi! I'm here to help you create a \"water cooler\" job description - the kind that makes people immediately think of specific candidates in their network.\n\nI'll help you identify the right archetypes and trade-offs to attract great referrals.\n\nTo get started, either describe what you're looking for, or if you have an existing job description, feel free to paste it here and I'll help transform it into something more network-friendly.",
       sender: 'bot',
       timestamp: new Date().toISOString()
     }
