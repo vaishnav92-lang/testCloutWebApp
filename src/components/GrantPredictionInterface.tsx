@@ -41,14 +41,14 @@ export default function GrantPredictionInterface({
 }: GrantPredictionInterfaceProps) {
   const [selectedApplicant, setSelectedApplicant] = useState<string>('')
   const [predictionText, setPredictionText] = useState('')
-  const [category, setCategory] = useState('capability')
+  const [category, setCategory] = useState('planned')
   const [predictions, setPredictions] = useState<Prediction[]>([])
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
 
-  const categories = ['capability', 'follow-through', 'reliability', 'innovation', 'collaboration']
+  const categories = ['planned', 'follow-through', 'reliability', 'innovation', 'collaboration']
 
   useEffect(() => {
     fetchPredictions()
@@ -97,7 +97,7 @@ export default function GrantPredictionInterface({
 
       setSuccess('Prediction added!')
       setPredictionText('')
-      setCategory('capability')
+      setCategory('planned')
       setTimeout(() => setSuccess(''), 3000)
 
       // Refresh predictions

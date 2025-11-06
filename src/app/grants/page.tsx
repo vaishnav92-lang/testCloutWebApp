@@ -182,7 +182,7 @@ export default function GrantsPage() {
                   📋 <strong>Your Work:</strong> Links + descriptions of past work and achievements
                 </li>
                 <li>
-                  🚀 <strong>Future Plans:</strong> Proposals require evidence of capability
+                  🚀 <strong>Future Plans:</strong> Proposals require evidence they are well-planned
                 </li>
                 <li>
                   🤝 <strong>Trust:</strong> Allocate trust to others based on their work

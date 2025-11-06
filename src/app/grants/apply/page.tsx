@@ -10,7 +10,7 @@ import { useState, useEffect, Suspense } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
-import GrantTrustAllocator from '@/components/GrantTrustAllocator'
+import GrantTrustAllocatorV2 from '@/components/GrantTrustAllocatorV2'
 
 interface Contribution {
   id?: string
@@ -25,6 +25,7 @@ interface Contribution {
 interface ApplicationForm {
   grantRoundId: string
   utilityFunction?: string
+  statement?: string
   contributions: Contribution[]
 }
 
@@ -39,10 +40,12 @@ function GrantApplicationContent() {
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
   const [success, setSuccess] = useState('')
+  const [showStructuredSection, setShowStructuredSection] = useState(false)
 
   const [form, setForm] = useState<ApplicationForm>({
     grantRoundId: grantRoundId || '',
     utilityFunction: '',
+    statement: '',
     contributions: [],
   })
 
@@ -213,176 +216,200 @@ function GrantApplicationContent() {
           </div>
         </div>
 
-        {/* Step 1: Contributions */}
+        {/* Step 1: Your Application */}
         {step === 1 && (
           <div className="bg-white rounded-lg shadow-sm border border-gray-200 p-6">
-            <h2 className="text-xl font-bold text-gray-900 mb-4">Your Work & Capabilities</h2>
+            <h2 className="text-xl font-bold text-gray-900 mb-4">Tell Us About Your Work</h2>
             <p className="text-gray-600 text-sm mb-6">
-              List links to things you've done/written, plus short descriptions. For future work proposals,
-              provide supporting evidence of your capability.
+              Share your vision, what you've accomplished, and what you plan to do. You can include links and details, or keep it free-form.
             </p>
 
-            {/* Existing Contributions */}
-            {form.contributions.length > 0 && (
-              <div className="mb-6">
-                <h3 className="text-lg font-semibold text-gray-900 mb-4">Your Contributions</h3>
-                <div className="space-y-3">
-                  {form.contributions.map((contrib) => (
-                    <div
-                      key={contrib.id}
-                      className="p-4 border border-gray-200 rounded-lg flex justify-between items-start"
-                    >
-                      <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-1">
-                          <h4 className="font-semibold text-gray-900">{contrib.title}</h4>
-                          {contrib.isProposal && (
-                            <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
-                              Proposal
-                            </span>
-                          )}
-                          {!contrib.isProposal && (
-                            <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
-                              Past Work
-                            </span>
-                          )}
-                        </div>
-                        <p className="text-sm text-gray-600">{contrib.description}</p>
-                        {contrib.url && (
-                          <a
-                            href={contrib.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-sm text-blue-600 hover:text-blue-700 mt-2 inline-block"
+            {/* Primary: Free-text Statement */}
+            <div className="mb-8">
+              <label className="block text-sm font-medium text-gray-700 mb-3">
+                Your Application Statement
+              </label>
+              <textarea
+                value={form.statement || ''}
+                onChange={(e) => setForm({ ...form, statement: e.target.value })}
+                rows={8}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500 font-sans"
+                placeholder={`Share your work and vision. For example:
+
+What have you been working on?
+What are you proud of accomplishing?
+What's your next big project?
+How does this grant help you achieve your goals?
+
+Feel free to include links to your work, past projects, or evidence of your capabilities.`}
+              />
+              <p className="text-xs text-gray-500 mt-2">
+                {(form.statement || '').length} characters
+              </p>
+            </div>
+
+            {/* Secondary: Structured Contributions (Collapsible) */}
+            <div className="border-t pt-6">
+              <button
+                onClick={() => setShowStructuredSection(!showStructuredSection)}
+                className="flex items-center gap-2 font-semibold text-gray-900 hover:text-blue-600 transition-colors"
+              >
+                <span className={`transition-transform ${showStructuredSection ? 'rotate-90' : ''}`}>
+                  ▶
+                </span>
+                Add Structured Contributions (Optional)
+              </button>
+
+              {showStructuredSection && (
+                <div className="mt-6 space-y-6">
+                  {/* Existing Contributions */}
+                  {form.contributions.length > 0 && (
+                    <div className="mb-6">
+                      <h3 className="font-semibold text-gray-900 mb-4">Your Contributions</h3>
+                      <div className="space-y-3">
+                        {form.contributions.map((contrib) => (
+                          <div
+                            key={contrib.id}
+                            className="p-4 border border-gray-200 rounded-lg flex justify-between items-start bg-gray-50"
                           >
-                            View →
-                          </a>
-                        )}
+                            <div className="flex-1">
+                              <div className="flex items-center gap-2 mb-1">
+                                <h4 className="font-semibold text-gray-900">{contrib.title}</h4>
+                                {contrib.isProposal && (
+                                  <span className="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">
+                                    Proposal
+                                  </span>
+                                )}
+                                {!contrib.isProposal && (
+                                  <span className="text-xs bg-blue-100 text-blue-800 px-2 py-1 rounded">
+                                    Past Work
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-sm text-gray-600">{contrib.description}</p>
+                              {contrib.url && (
+                                <a
+                                  href={contrib.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="text-sm text-blue-600 hover:text-blue-700 mt-2 inline-block"
+                                >
+                                  View →
+                                </a>
+                              )}
+                            </div>
+                            <button
+                              onClick={() => removeContribution(contrib.id)}
+                              className="text-red-600 hover:text-red-700 font-medium text-sm ml-4"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        ))}
                       </div>
+                    </div>
+                  )}
+
+                  {/* Add New Contribution */}
+                  <div className="bg-gray-50 rounded-lg p-4">
+                    <h3 className="font-semibold text-gray-900 mb-4">Add a Structured Item</h3>
+                    <div className="space-y-4">
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Title
+                        </label>
+                        <input
+                          type="text"
+                          value={newContribution.title}
+                          onChange={(e) =>
+                            setNewContribution({ ...newContribution, title: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="e.g., Research Paper on Climate Policy"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          Description
+                        </label>
+                        <textarea
+                          value={newContribution.description}
+                          onChange={(e) =>
+                            setNewContribution({ ...newContribution, description: e.target.value })
+                          }
+                          rows={3}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="What you did and why it matters"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="block text-sm font-medium text-gray-700 mb-1">
+                          URL (optional)
+                        </label>
+                        <input
+                          type="url"
+                          value={newContribution.url || ''}
+                          onChange={(e) =>
+                            setNewContribution({ ...newContribution, url: e.target.value })
+                          }
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                          placeholder="https://example.com"
+                        />
+                      </div>
+
+                      <label className="flex items-center">
+                        <input
+                          type="checkbox"
+                          checked={newContribution.isProposal}
+                          onChange={(e) =>
+                            setNewContribution({
+                              ...newContribution,
+                              isProposal: e.target.checked,
+                            })
+                          }
+                          className="rounded border-gray-300"
+                        />
+                        <span className="ml-2 text-sm text-gray-700">
+                          This is a future proposal (requires proof of capability)
+                        </span>
+                      </label>
+
+                      {newContribution.isProposal && (
+                        <div>
+                          <label className="block text-sm font-medium text-gray-700 mb-1">
+                            Proof of Capability Link
+                          </label>
+                          <input
+                            type="url"
+                            value={newContribution.proofOfWork || ''}
+                            onChange={(e) =>
+                              setNewContribution({
+                                ...newContribution,
+                                proofOfWork: e.target.value,
+                              })
+                            }
+                            className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
+                            placeholder="Link showing you can do this"
+                          />
+                        </div>
+                      )}
+
                       <button
-                        onClick={() => removeContribution(contrib.id)}
-                        className="text-red-600 hover:text-red-700 font-medium text-sm ml-4"
+                        onClick={addContribution}
+                        className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
                       >
-                        Remove
+                        Add Item
                       </button>
                     </div>
-                  ))}
+                  </div>
                 </div>
-              </div>
-            )}
-
-            {/* Add New Contribution */}
-            <div className="bg-gray-50 rounded-lg p-4">
-              <h3 className="font-semibold text-gray-900 mb-4">Add a Contribution</h3>
-              <div className="space-y-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Title *
-                  </label>
-                  <input
-                    type="text"
-                    value={newContribution.title}
-                    onChange={(e) =>
-                      setNewContribution({ ...newContribution, title: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Research Paper on Climate Policy"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Description *
-                  </label>
-                  <textarea
-                    value={newContribution.description}
-                    onChange={(e) =>
-                      setNewContribution({ ...newContribution, description: e.target.value })
-                    }
-                    rows={3}
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Describe what you did and your contribution"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    URL (optional)
-                  </label>
-                  <input
-                    type="url"
-                    value={newContribution.url || ''}
-                    onChange={(e) =>
-                      setNewContribution({ ...newContribution, url: e.target.value })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="https://example.com"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Your Contribution (for collaborative work)
-                  </label>
-                  <input
-                    type="text"
-                    value={newContribution.yourContribution || ''}
-                    onChange={(e) =>
-                      setNewContribution({
-                        ...newContribution,
-                        yourContribution: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="e.g., Lead researcher, helped design methodology"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">
-                    Proof of Work (for future proposals)
-                  </label>
-                  <input
-                    type="url"
-                    value={newContribution.proofOfWork || ''}
-                    onChange={(e) =>
-                      setNewContribution({
-                        ...newContribution,
-                        proofOfWork: e.target.value,
-                      })
-                    }
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-blue-500 focus:border-blue-500"
-                    placeholder="Link to evidence of capability"
-                  />
-                </div>
-
-                <label className="flex items-center">
-                  <input
-                    type="checkbox"
-                    checked={newContribution.isProposal}
-                    onChange={(e) =>
-                      setNewContribution({
-                        ...newContribution,
-                        isProposal: e.target.checked,
-                      })
-                    }
-                    className="rounded border-gray-300"
-                  />
-                  <span className="ml-2 text-sm text-gray-700">
-                    This is a future proposal (requires proof of capability)
-                  </span>
-                </label>
-
-                <button
-                  onClick={addContribution}
-                  className="w-full px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
-                >
-                  Add Contribution
-                </button>
-              </div>
+              )}
             </div>
 
             {/* Navigation */}
-            <div className="flex justify-between mt-8">
+            <div className="flex justify-between mt-8 pt-6 border-t">
               <Link
                 href="/grants"
                 className="px-4 py-2 text-gray-700 border border-gray-300 rounded-lg hover:bg-gray-50"
@@ -391,7 +418,7 @@ function GrantApplicationContent() {
               </Link>
               <button
                 onClick={() => setStep(2)}
-                disabled={form.contributions.length === 0}
+                disabled={!form.statement || form.statement.trim().length === 0}
                 className="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Next: Trust Allocation
@@ -403,7 +430,7 @@ function GrantApplicationContent() {
         {/* Step 2: Trust Allocation */}
         {step === 2 && (
           <div>
-            <GrantTrustAllocator
+            <GrantTrustAllocatorV2
               grantRoundId={grantRoundId || ''}
               applicants={[]}
             />

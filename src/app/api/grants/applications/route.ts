@@ -18,7 +18,7 @@ export async function POST(request: NextRequest) {
     }
 
     const body = await request.json()
-    const { grantRoundId, utilityFunction, contributions, status } = body
+    const { grantRoundId, utilityFunction, contributions, status, statement } = body
 
     // Create or update application
     const application = await prisma.grantApplication.upsert({
@@ -30,6 +30,7 @@ export async function POST(request: NextRequest) {
       },
       update: {
         utilityFunction,
+        statement,
         status: status || undefined,
         submittedAt: status === 'SUBMITTED' ? new Date() : undefined,
         updatedAt: new Date(),
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
         grantRoundId,
         applicantId: session.user.id,
         utilityFunction,
+        statement,
         status: status || 'DRAFT',
         submittedAt: status === 'SUBMITTED' ? new Date() : undefined,
       },
