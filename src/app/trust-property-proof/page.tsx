@@ -234,10 +234,10 @@ export default function TrustPropertyProofPage() {
     if (isSelfLoop) {
       // Draw self-loop as a circle above the node
       const radius = 30;
-      const cx = fromX;
-      const cy = fromY - 40;
-      const opacity = 0.3 + (weight * 0.7);
-      const strokeWidth = 1 + (weight * 4);
+      const cx = Math.round(fromX * 100) / 100;
+      const cy = Math.round((fromY - 40) * 100) / 100;
+      const opacity = Math.round((0.3 + (weight * 0.7)) * 100) / 100;
+      const strokeWidth = Math.round((1 + (weight * 4)) * 100) / 100;
 
       return (
         <g key={`${fromX}-${fromY}-self`}>
@@ -272,17 +272,17 @@ export default function TrustPropertyProofPage() {
 
     // Shorten the arrow to not overlap with nodes
     const nodeRadius = 30;
-    const startX = fromX + Math.cos(angle) * nodeRadius;
-    const startY = fromY + Math.sin(angle) * nodeRadius;
-    const endX = toX - Math.cos(angle) * nodeRadius;
-    const endY = toY - Math.sin(angle) * nodeRadius;
+    const startX = Math.round((fromX + Math.cos(angle) * nodeRadius) * 100) / 100;
+    const startY = Math.round((fromY + Math.sin(angle) * nodeRadius) * 100) / 100;
+    const endX = Math.round((toX - Math.cos(angle) * nodeRadius) * 100) / 100;
+    const endY = Math.round((toY - Math.sin(angle) * nodeRadius) * 100) / 100;
 
     // Mid point for label
-    const midX = (startX + endX) / 2;
-    const midY = (startY + endY) / 2;
+    const midX = Math.round(((startX + endX) / 2) * 100) / 100;
+    const midY = Math.round(((startY + endY) / 2) * 100) / 100;
 
-    const opacity = 0.3 + (weight * 0.7);
-    const strokeWidth = 1 + (weight * 4);
+    const opacity = Math.round((0.3 + (weight * 0.7)) * 100) / 100;
+    const strokeWidth = Math.round((1 + (weight * 4)) * 100) / 100;
 
     return (
       <g key={`${fromX}-${fromY}-${toX}-${toY}`}>
@@ -487,10 +487,349 @@ export default function TrustPropertyProofPage() {
           </div>
         </div>
 
+        {/* Interactive Section */}
+        <InteractiveGraph />
+
         {/* Footer Note */}
-        <div className="text-center text-gray-500 text-sm">
+        <div className="text-center text-gray-500 text-sm mt-8">
           <p>This property makes our trust system resistant to manipulation and gaming.</p>
           <p className="mt-1">Users cannot artificially inflate their own trust scores through strategic allocations.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Interactive Graph Component
+function InteractiveGraph() {
+  const UNIT_VERTEX = '__UNIT__';
+
+  // Initial large graph setup (8 nodes in a circle)
+  const initialNodes: GraphNode[] = [
+    { id: 'A', x: 300, y: 50, label: 'Alice' },
+    { id: 'B', x: 500, y: 100, label: 'Bob' },
+    { id: 'C', x: 550, y: 300, label: 'Carol' },
+    { id: 'D', x: 450, y: 450, label: 'David' },
+    { id: 'E', x: 250, y: 450, label: 'Eve' },
+    { id: 'F', x: 150, y: 300, label: 'Frank' },
+    { id: 'G', x: 200, y: 100, label: 'Grace' },
+    { id: 'H', x: 350, y: 250, label: 'Henry' },
+  ];
+
+  // Initial graph allocations
+  const initialGraph: Record<string, Record<string, number>> = {
+    A: { B: 0.4, G: 0.3, H: 0.3 },
+    B: { A: 0.2, C: 0.5, H: 0.3 },
+    C: { B: 0.3, D: 0.4, H: 0.3 },
+    D: { C: 0.3, E: 0.4, H: 0.3 },
+    E: { D: 0.3, F: 0.4, H: 0.3 },
+    F: { E: 0.3, G: 0.4, H: 0.3 },
+    G: { F: 0.3, A: 0.4, H: 0.3 },
+    H: { A: 0.2, C: 0.2, E: 0.2, G: 0.2, [UNIT_VERTEX]: 0.2 },
+  };
+
+  const [graph, setGraph] = useState(initialGraph);
+  const [selectedNode, setSelectedNode] = useState<string | null>(null);
+  const [sliderValues, setSliderValues] = useState<Record<string, number>>({});
+  const [isComputing, setIsComputing] = useState(false);
+  const [results, setResults] = useState<{
+    standard: Record<string, number>;
+    modified: Record<string, number>;
+  } | null>(null);
+  const [originalResults, setOriginalResults] = useState<{
+    standard: Record<string, number>;
+    modified: Record<string, number>;
+  } | null>(null);
+
+  // Compute initial scores
+  useEffect(() => {
+    computeScores(initialGraph, true);
+  }, []);
+
+  const computeScores = async (graphData: Record<string, Record<string, number>>, isInitial = false) => {
+    setIsComputing(true);
+    try {
+      const response = await fetch('/api/eigentrust/compare', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ graph: graphData }),
+      });
+
+      const data = await response.json();
+      setResults(data);
+
+      if (isInitial) {
+        setOriginalResults(data);
+      }
+    } catch (error) {
+      console.error('Error computing scores:', error);
+    } finally {
+      setIsComputing(false);
+    }
+  };
+
+  const handleNodeClick = (nodeId: string) => {
+    setSelectedNode(nodeId);
+    setSliderValues(graph[nodeId] || {});
+    // Reset original results to current results when switching nodes
+    // This ensures we compare against the score at the moment of selection
+    if (results) {
+      setOriginalResults(results);
+    }
+  };
+
+  const handleSliderChange = (target: string, value: number) => {
+    setSliderValues(prev => ({ ...prev, [target]: value }));
+  };
+
+  const handleSliderRelease = async (target: string) => {
+    if (!selectedNode) return;
+
+    // Normalize allocations to sum to 1.0
+    const total = Object.values(sliderValues).reduce((sum, val) => sum + val, 0);
+    const normalized: Record<string, number> = {};
+    for (const [t, val] of Object.entries(sliderValues)) {
+      normalized[t] = total > 0 ? val / total : 0;
+    }
+
+    // Update graph
+    const newGraph = {
+      ...graph,
+      [selectedNode]: normalized,
+    };
+    setGraph(newGraph);
+
+    // Compute new scores
+    await computeScores(newGraph);
+  };
+
+  const allTargets = [...initialNodes.map(n => n.id).filter(id => id !== selectedNode), UNIT_VERTEX];
+
+  return (
+    <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
+      <div className="mb-6">
+        <h2 className="text-3xl font-bold text-gray-900 mb-2">
+          Interactive Demonstration
+        </h2>
+        <p className="text-gray-600">
+          Click any node to modify its trust allocations. Watch how standard EigenTrust changes the node's score, but our modified algorithm keeps it constant.
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-8">
+        {/* Left: Graph Visualization */}
+        <div>
+          <h3 className="text-lg font-semibold mb-4 text-center">Trust Network</h3>
+          <svg width="700" height="500" className="border border-gray-200 rounded-lg">
+            <defs>
+              <marker
+                id="arrowhead-interactive"
+                markerWidth="10"
+                markerHeight="10"
+                refX="9"
+                refY="3"
+                orient="auto"
+              >
+                <polygon points="0 0, 10 3, 0 6" fill="#6366f1" />
+              </marker>
+            </defs>
+
+            {/* Draw edges only for selected node */}
+            {selectedNode && initialNodes.map((targetNode) => {
+              if (targetNode.id === selectedNode) return null;
+
+              const fromNode = initialNodes.find(n => n.id === selectedNode);
+              if (!fromNode) return null;
+
+              const weight = sliderValues[targetNode.id] || 0;
+              if (weight === 0) return null;
+
+              const dx = targetNode.x - fromNode.x;
+              const dy = targetNode.y - fromNode.y;
+              const angle = Math.atan2(dy, dx);
+              const nodeRadius = 30;
+
+              const startX = fromNode.x + Math.cos(angle) * nodeRadius;
+              const startY = fromNode.y + Math.sin(angle) * nodeRadius;
+              const endX = targetNode.x - Math.cos(angle) * nodeRadius;
+              const endY = targetNode.y - Math.sin(angle) * nodeRadius;
+
+              const midX = (startX + endX) / 2;
+              const midY = (startY + endY) / 2;
+
+              const opacity = 0.3 + (weight * 0.7);
+              const strokeWidth = 2 + (weight * 6);
+
+              return (
+                <g key={`${fromNode.id}-${targetNode.id}`}>
+                  <line
+                    x1={startX}
+                    y1={startY}
+                    x2={endX}
+                    y2={endY}
+                    stroke="#6366f1"
+                    strokeWidth={strokeWidth}
+                    opacity={opacity}
+                    markerEnd="url(#arrowhead-interactive)"
+                  />
+                  <text
+                    x={midX}
+                    y={midY - 8}
+                    textAnchor="middle"
+                    className="text-sm font-semibold"
+                    fill="#6366f1"
+                  >
+                    {Math.round(weight * 100)}%
+                  </text>
+                </g>
+              );
+            })}
+
+            {/* Draw nodes */}
+            {initialNodes.map((node) => {
+              const isSelected = node.id === selectedNode;
+              const standardScore = results?.standard[node.id] || 0;
+              const modifiedScore = results?.modified[node.id] || 0;
+
+              return (
+                <g key={node.id} onClick={() => handleNodeClick(node.id)} className="cursor-pointer">
+                  <circle
+                    cx={node.x}
+                    cy={node.y}
+                    r={30}
+                    fill={isSelected ? '#6366f1' : '#e0e7ff'}
+                    stroke={isSelected ? '#4f46e5' : '#a5b4fc'}
+                    strokeWidth={isSelected ? 4 : 2}
+                    className="transition-all duration-300 hover:stroke-indigo-600"
+                  />
+                  <text
+                    x={node.x}
+                    y={node.y + 5}
+                    textAnchor="middle"
+                    className="text-sm font-bold pointer-events-none"
+                    fill={isSelected ? 'white' : '#4f46e5'}
+                  >
+                    {node.label}
+                  </text>
+                </g>
+              );
+            })}
+          </svg>
+        </div>
+
+        {/* Right: Sliders and Results */}
+        <div>
+          {!selectedNode ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="text-center text-gray-400">
+                <div className="text-6xl mb-4">👆</div>
+                <p className="text-lg">Click any node to adjust its trust allocations</p>
+              </div>
+            </div>
+          ) : (
+            <div>
+              <h3 className="text-lg font-semibold mb-4">
+                {initialNodes.find(n => n.id === selectedNode)?.label}'s Trust Allocations
+              </h3>
+
+              {/* Sliders */}
+              <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
+                {allTargets.map((target) => {
+                  const value = sliderValues[target] || 0;
+                  const label = target === UNIT_VERTEX ? 'Unit ()' : initialNodes.find(n => n.id === target)?.label || target;
+
+                  return (
+                    <div key={target} className="p-3 rounded-lg border bg-white border-gray-200">
+                      <div className="flex justify-between mb-2">
+                        <span className="font-medium text-sm">{label}</span>
+                        <span className="font-semibold text-indigo-600">{Math.round(value * 100)}%</span>
+                      </div>
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        value={value * 100}
+                        onChange={(e) => handleSliderChange(target, parseFloat(e.target.value) / 100)}
+                        onMouseUp={() => handleSliderRelease(target)}
+                        onTouchEnd={() => handleSliderRelease(target)}
+                        className="w-full h-2 rounded-lg appearance-none cursor-pointer bg-indigo-200"
+                        style={{
+                          background: `linear-gradient(to right, #6366f1 0%, #6366f1 ${value * 100}%, #c7d2fe ${value * 100}%, #c7d2fe 100%)`
+                        }}
+                      />
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Results Comparison */}
+              {results && originalResults && (
+                <div className="space-y-4">
+                  <div className="border-t pt-4">
+                    <h4 className="font-semibold mb-3 text-center">Trust Score Comparison</h4>
+
+                    {/* Standard EigenTrust */}
+                    <div className="bg-red-50 border-2 border-red-200 rounded-lg p-4 mb-3">
+                      <div className="text-sm font-semibold text-red-900 mb-2">Standard EigenTrust</div>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-xs text-gray-600">Original</div>
+                          <div className="text-lg font-bold text-gray-700">
+                            {originalResults.standard[selectedNode]?.toFixed(4)}
+                          </div>
+                        </div>
+                        <div className="text-2xl text-gray-400">→</div>
+                        <div>
+                          <div className="text-xs text-gray-600">After Change</div>
+                          <div className="text-lg font-bold text-red-600">
+                            {results.standard[selectedNode]?.toFixed(4)}
+                          </div>
+                        </div>
+                        <div className={`text-sm font-semibold px-3 py-1 rounded ${
+                          Math.abs(results.standard[selectedNode] - originalResults.standard[selectedNode]) > 0.0001
+                            ? 'bg-red-200 text-red-800'
+                            : 'bg-green-200 text-green-800'
+                        }`}>
+                          {Math.abs(results.standard[selectedNode] - originalResults.standard[selectedNode]) > 0.0001 ? '✗ Changed' : '✓ Same'}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Modified EigenTrust */}
+                    <div className="bg-green-50 border-2 border-green-200 rounded-lg p-4">
+                      <div className="text-sm font-semibold text-green-900 mb-2">Our Modified Algorithm</div>
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <div className="text-xs text-gray-600">Original</div>
+                          <div className="text-lg font-bold text-gray-700">
+                            {originalResults.modified[selectedNode]?.toFixed(4)}
+                          </div>
+                        </div>
+                        <div className="text-2xl text-gray-400">→</div>
+                        <div>
+                          <div className="text-xs text-gray-600">After Change</div>
+                          <div className="text-lg font-bold text-green-600">
+                            {results.modified[selectedNode]?.toFixed(4)}
+                          </div>
+                        </div>
+                        <div className={`text-sm font-semibold px-3 py-1 rounded ${
+                          Math.abs(results.modified[selectedNode] - originalResults.modified[selectedNode]) > 0.0001
+                            ? 'bg-red-200 text-red-800'
+                            : 'bg-green-200 text-green-800'
+                        }`}>
+                          {Math.abs(results.modified[selectedNode] - originalResults.modified[selectedNode]) > 0.0001 ? '✗ Changed' : '✓ Unchanged'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {isComputing && (
+                    <div className="text-center text-sm text-gray-500">Computing...</div>
+                  )}
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>
