@@ -1,0 +1,465 @@
+> Let's do something new. Imagine you have a graph. Edges are weighted, the sum of outgoing edges adds to one. There is a unit () vertex so that any unspent weight gets allocated to the unit. Prove 
+or disprove that for the eigentrust algorithm, the following property holds: a vertex changing their trust allocation (outgoing edge weights) does not change its own trust score. 
+
+● This is an interesting theoretical question about EigenTrust! Let me work through this systematically.
+
+  Problem Setup
+
+  Given:
+  - Directed graph with weighted edges
+  - Outgoing edge weights from each vertex sum to 1 (including weight to unit vertex)
+  - EigenTrust computes trust scores as the eigenvector: T = C^T × T
+    - Where C_ij is the trust that vertex i allocates to vertex j
+    - T_k = Σ_i C_ik × T_i (trust score k receives from all vertices i)
+
+  Claim to Test
+
+  Does vertex k changing its outgoing edges (C_kj values) change its own trust score T_k?
+
+  Initial Observation
+
+  The equation T_k = Σ_i C_ik × T_i shows that T_k depends on incoming edges (C_ik), not outgoing edges (C_kj). This suggests the property might hold.
+
+  Counterexample: Property is FALSE
+
+  Consider this simple graph:
+
+  Initial state:
+  - Vertices: A, B, unit
+  - Edges: A→A: 0.5 (self-loop), A→B: 0.5, B→A: 1.0
+
+  Computing trust scores:
+  T_A = 0.5 × T_A + 1.0 × T_B
+  T_B = 0.5 × T_A
+
+  From equation 2: T_B = 0.5 × T_A
+  Substitute into equation 1: T_A = 0.5 × T_A + 0.5 × T_A = T_A ✓
+
+  Ratio: T_A : T_B = 1 : 0.5
+  Normalized: T_A = 2/3, T_B = 1/3
+
+  A changes allocation:
+  - New edges: A→A: 0, A→B: 1.0, B→A: 1.0
+
+  New trust scores:
+  T_A = 1.0 × T_B = T_B
+  T_B = 1.0 × T_A = T_A
+
+  So T_A = T_B
+  Normalized: T_A = 0.5, T_B = 0.5
+
+  Result: T_A changed from 2/3 to 0.5 ✗
+
+  Conclusion: Property is FALSE
+
+  Although T_k doesn't directly depend on vertex k's outgoing edges in its defining equation, the eigenvector is the solution to a coupled system. When k changes its outgoing edges:
+
+  1. This affects other vertices' trust scores (T_j for j ≠ k)
+  2. Those changed scores propagate through the graph
+  3. The new values eventually flow back to affect T_k through incoming edges
+
+  The self-loop example is particularly illustrative: by having a self-loop, vertex A was "recirculating" some of its received trust back to itself through the coupled equations, increasing its
+  final score. Removing the self-loop broke this feedback loop, lowering A's score.
+
+  Key insight: In a coupled eigenvalue system, changing any row of the matrix affects the entire eigenvector, even though each component's equation only explicitly depends on its corresponding
+  column.
+
+> Modify the eigentrust algorithm to ensure this property. 
+
+● I'll modify the EigenTrust algorithm to ensure a vertex's outgoing allocations don't affect its own trust score. The key insight is to exclude self-contribution when computing each vertex's trust
+  score.
+
+● Read(src/lib/eigentrust.ts)
+  ⎿  Error reading file
+
+● Bash(find /home/tristan/prog/testCloutWebApp -name "*eigentrust*" -o -name "*trust*" | grep -E "\.(ts|js)$" | grep -v node_modules | head -20)
+  ⎿  /home/tristan/prog/testCloutWebApp/check-trust.js           
+     /home/tristan/prog/testCloutWebApp/src/lib/eigentrust-new.ts
+
+● Read(src/lib/eigentrust-new.ts)
+  ⎿  Read 365 lines
+  ⎿  Interrupted · What should Claude do instead?
+
+> I meant at a theoretical level, not at a code level. 
+
+● Ah, I see! Let me work through this theoretically.
+
+  Theoretical Modification to EigenTrust
+
+  The Core Problem
+
+  In standard EigenTrust, the trust score for vertex k is:
+
+  T_k = Σ_i C_ik × T_i
+
+  where C_ik is the trust that vertex i allocates to k.
+
+  Although T_k only explicitly depends on incoming edges (C_ik), since T is an eigenvector of the full system, changing vertex k's outgoing allocations (row k of matrix C) affects the entire
+  eigenvector, including T_k itself.
+
+  The Solution: Exclude Self-Influence
+
+  Modified EigenTrust formula:
+
+  T_k = Σ_{i≠k} C_ik × T_i
+
+  That is: exclude vertex k's own contribution when computing its trust score.
+
+  In iterative form:
+
+  t^(n+1)k = (1-α) × Σ{i≠k} C_ik × t^(n)_i + α × p_k
+
+  Why This Works
+
+  This modification ensures that:
+  1. Your trust score depends only on others' opinions of you
+  2. Your own trust allocations cannot influence your score (directly or indirectly through cycles)
+  3. Self-loops and feedback cycles that involve k are eliminated from k's score calculation
+
+  Properties Preserved
+
+  - Convergence: Still converges because we're still doing power iteration on a modified stochastic matrix
+  - Pretrust: The pretrust vector p still provides the teleportation baseline
+  - Sybil resistance: You still can't create fake identities that trust you, since only real users' trust counts
+
+  Important Consideration: Normalization
+
+  Since we're excluding one term from each sum, the scores won't automatically sum to a meaningful total. We need to:
+
+  1. Either: Renormalize each vertex's incoming edges excluding the self-contribution
+  2. Or: Normalize the final trust vector after convergence
+
+  The cleaner approach is to pre-normalize the matrix: define C'_ik where row k has been removed, renormalize each column, then compute with C'.
+
+  Verification with Counterexample
+
+  Original: A→A: 0.5, A→B: 0.5, B→A: 1.0
+
+  Modified scores:
+  - T_A = 1.0 × T_B (only B's contribution counts)
+  - T_B = 0.5 × T_A (only A's contribution counts)
+
+  Now if A changes its allocations to A→B: 1.0:
+  - T_A = 1.0 × T_B (unchanged, still only depends on B)
+  - T_B = 1.0 × T_A (changes because A allocated more to B)
+
+  Result: T_A is unaffected by A's allocation change ✓
+
+  The property now holds!
+
+> Create a large test suite to test this, with many corner cases, and using the unit vertex () for unallocated weight. Verify the property now holds by computing eigentrust on variants of a trust 
+graph. Maybe even generate these cases programmatically, by starting with a few graphs, and modifying them in each way that you think would be a good way to test, and check that each step does not 
+modify the eigentrust of an individual, if in that step only that individual's outbound allocation changes. If you do it programmatically then you can run a large test over thousands of variants. 
+
+● I'll create a comprehensive test suite that programmatically generates and tests thousands of graph variants. Let me build this as a standalone test file:
+
+● Write(test-modified-eigentrust.js)
+  ⎿  Wrote 562 lines to test-modified-eigentrust.js                   
+     /**
+      * Test Suite for Modified EigenTrust Algorithm
+      *
+      * Tests the property: A vertex changing its outgoing allocations
+      * does not change its own trust score.
+      */
+     const UNIT_VERTEX = '__UNIT__';
+     const EPSILON = 1e-6; // Floating point comparison threshold
+     const MAX_ITERATIONS = 1000;
+     … +552 lines (ctrl+o to expand)
+
+● Now let's run this comprehensive test suite:
+
+● Bash(node test-modified-eigentrust.js) timeout: 30s
+  ⎿  Error: Exit code 1
+     ================================================================================
+     MODIFIED EIGENTRUST TEST SUITE
+     ================================================================================
+
+     Testing base graphs with MODIFIED EigenTrust...
+     Base graphs: 450 tests, 318 violations
+
+     Violations found in base graphs:
+       linear_3 / B: 0.092500 -> 0.144814 (Δ0.052314)
+     … +55 lines (ctrl+o to see all)
+
+● Hmm, the simple self-exclusion modification doesn't work! The property is still violated in 89% of cases. The issue is that even though we exclude direct self-contribution, indirect feedback still
+   occurs: your allocations change others' scores, which propagate through the network back to you.
+
+  Let me try a different theoretical approach - a two-phase decoupled computation:
+
+● Update(test-modified-eigentrust.js)
+  ⎿  Updated test-modified-eigentrust.js with 73 additions and 15 removals                             
+       12    const DECAY_FACTOR = 0.15;
+       13    
+       14    /**
+       15 -   * Modified EigenTrust: Excludes self-contribution when computing trust scores
+       15 +   * Modified EigenTrust: Two-Phase Decoupled Computation
+       16 +   *
+       17 +   * For each vertex k, we compute its score based on a "frozen" network
+       18 +   * where k's allocations don't affect the computation.
+       19 +   *
+       20 +   * Algorithm:
+       21 +   * 1. For each vertex k:
+       22 +   *    a. Create subgraph excluding k's outgoing edges
+       23 +   *    b. Compute EigenTrust on this subgraph to get others' scores
+       24 +   *    c. Compute k's score = sum of (incoming weight × sender's frozen score)
+       25     */
+       26    function computeModifiedEigenTrust(graph, pretrust = null) {
+       27      const vertices = Object.keys(graph).filter(v => v !== UNIT_VERTEX);
+     ...
+       20    
+       21      if (n === 0) return {};
+       22    
+       23 -    // Build index mappings
+       23 +    const result = {};
+       24 +  
+       25 +    // For each vertex k, compute its score independently
+       26 +    for (const k of vertices) {
+       27 +      // Build subgraph excluding k's outgoing allocations
+       28 +      const subgraph = {};
+       29 +      for (const giver of vertices) {
+       30 +        if (giver !== k) {
+       31 +          subgraph[giver] = { ...graph[giver] };
+       32 +        } else {
+       33 +          // k doesn't contribute to the network flow
+       34 +          subgraph[k] = { [UNIT_VERTEX]: 1.0 };
+       35 +        }
+       36 +      }
+       37 +  
+       38 +      // Compute EigenTrust on subgraph
+       39 +      const subScores = computeSubgraphEigenTrust(subgraph, pretrust);
+       40 +  
+       41 +      // Now compute k's score based on incoming edges and the frozen scores
+       42 +      let kScore = 0;
+       43 +      for (const giver of vertices) {
+       44 +        if (giver !== k) {
+       45 +          const allocations = graph[giver] || {};
+       46 +          let totalAllocated = 0;
+       47 +          for (const [receiver, weight] of Object.entries(allocations)) {
+       48 +            if (receiver !== UNIT_VERTEX) {
+       49 +              totalAllocated += weight;
+       50 +            }
+       51 +          }
+       52 +  
+       53 +          if (totalAllocated > 0 && allocations[k]) {
+       54 +            const normalizedWeight = allocations[k] / totalAllocated;
+       55 +            kScore += normalizedWeight * (subScores[giver] || 0);
+       56 +          }
+       57 +        }
+       58 +      }
+       59 +  
+       60 +      // Apply decay factor to pretrust
+       61 +      const pretrustValue = pretrust && pretrust[k] ? pretrust[k] : 1.0 / n;
+       62 +      result[k] = (1 - DECAY_FACTOR) * kScore + DECAY_FACTOR * pretrustValue;
+       63 +    }
+       64 +  
+       65 +    // Normalize results
+       66 +    const total = Object.values(result).reduce((sum, v) => sum + v, 0);
+       67 +    if (total > 0) {
+       68 +      for (const k of vertices) {
+       69 +        result[k] /= total;
+       70 +      }
+       71 +    }
+       72 +  
+       73 +    return result;
+       74 +  }
+       75 +  
+       76 +  /**
+       77 +   * Helper: Compute standard EigenTrust on a subgraph
+       78 +   */
+       79 +  function computeSubgraphEigenTrust(graph, pretrust = null) {
+       80 +    const vertices = Object.keys(graph).filter(v => v !== UNIT_VERTEX);
+       81 +    const n = vertices.length;
+       82 +  
+       83 +    if (n === 0) return {};
+       84 +  
+       85      const vertexToIndex = new Map();
+       86      vertices.forEach((v, i) => vertexToIndex.set(v, i));
+       87    
+       88 -    // Initialize pretrust vector (uniform if not specified)
+       88      const p = new Array(n).fill(1.0 / n);
+       89      if (pretrust) {
+       90        let sum = 0;
+     ...
+       32          p[i] = pretrust[v] || 0;
+       33          sum += p[i];
+       34        });
+       35 -      // Normalize
+       35        if (sum > 0) {
+       36          for (let i = 0; i < n; i++) p[i] /= sum;
+       37        }
+       38      }
+       39    
+       40 -    // Build normalized trust matrix C (excluding self-contributions)
+       41 -    // C_modified[i][j] = trust from i to j, but when computing j's score, we ignore j's row
+       40      const C = Array(n).fill(null).map(() => Array(n).fill(0));
+       41    
+       42      for (const giver of vertices) {
+     ...
+       53          }
+       54        }
+       55    
+       56 -      // Normalize outgoing edges (excluding unit vertex)
+       56        if (totalAllocated > 0) {
+       57          for (const [receiver, weight] of Object.entries(allocations)) {
+       58            if (receiver !== UNIT_VERTEX) {
+     ...
+       66        }
+       67      }
+       68    
+       69 -    // Initialize trust vector
+       69      let t = [...p];
+       70    
+       71 -    // Power iteration
+       71      for (let iter = 0; iter < MAX_ITERATIONS; iter++) {
+       72        const tNew = new Array(n);
+       73    
+       74        for (let j = 0; j < n; j++) {
+       75 -        // MODIFIED: Exclude vertex j's own contribution
+       75          let sum = 0;
+       76          for (let i = 0; i < n; i++) {
+       77 -          if (i !== j) { // KEY MODIFICATION: Skip self-contribution
+       78 -            sum += C[i][j] * t[i];
+       79 -          }
+       77 +          sum += C[i][j] * t[i];
+       78          }
+       79          tNew[j] = (1 - DECAY_FACTOR) * sum + DECAY_FACTOR * p[j];
+       80        }
+       81    
+       82 -      // Check convergence
+       82        let maxChange = 0;
+       83        for (let i = 0; i < n; i++) {
+       84          maxChange = Math.max(maxChange, Math.abs(tNew[i] - t[i]));
+     ...
+        97        }
+        98      }
+        99    
+       100 -    // Build result map
+       100      const result = {};
+       101      vertices.forEach((v, i) => {
+       102        result[v] = t[i];
+
+● Now let's test this two-phase decoupled approach:
+
+● Bash(node test-modified-eigentrust.js) timeout: 1m 0s
+  ⎿  Error: Exit code 1
+     ================================================================================
+     MODIFIED EIGENTRUST TEST SUITE
+     ================================================================================
+
+     Testing base graphs with MODIFIED EigenTrust...
+     Base graphs: 450 tests, 398 violations
+
+     Violations found in base graphs:
+       linear_3 / A: 0.184417 -> 0.259740 (Δ0.075323)
+     … +55 lines (ctrl+o to see all)
+
+● The two-phase approach still fails (97% violations). I think I see the fundamental issue: normalization creates coupling. When we normalize scores to sum to 1.0, changing any allocation shifts the
+   entire distribution.
+
+  Let me try a different approach - compute without final normalization and see if the property holds for raw (unnormalized) scores:
+
+● Update(test-modified-eigentrust.js)
+  ⎿  Updated test-modified-eigentrust.js with 2 additions and 7 removals                
+       71        result[k] = (1 - DECAY_FACTOR) * kScore + DECAY_FACTOR * pretrustValue;
+       72      }
+       73    
+       74 -    // Normalize results
+       75 -    const total = Object.values(result).reduce((sum, v) => sum + v, 0);
+       76 -    if (total > 0) {
+       77 -      for (const k of vertices) {
+       78 -        result[k] /= total;
+       79 -      }
+       80 -    }
+       74 +    // DO NOT normalize - normalization couples all scores together
+       75 +    // Return raw scores to maintain independence
+       76    
+       77      return result;
+       78    }
+
+● Bash(node test-modified-eigentrust.js 2>&1 | head -100) timeout: 1m 0s
+  ⎿  ================================================================================
+     MODIFIED EIGENTRUST TEST SUITE
+     ================================================================================
+     … +38 lines (ctrl+o to expand)
+
+● Excellent! 100% success rate across ~10,000 test cases!
+
+  The winning modification has two key components:
+
+  1. Two-Phase Decoupled Computation: For each vertex k:
+    - Compute all other vertices' scores in a subgraph where k's allocations are excluded (k sends all weight to unit)
+    - Compute k's score based on incoming edges weighted by those "frozen" scores
+  2. No Normalization: This is critical! Normalization couples all scores together, making independence impossible.
+
+  Let me run an even larger stress test to be thorough:
+
+● Update(test-modified-eigentrust.js)
+  ⎿  Updated test-modified-eigentrust.js with 1 addition and 1 removal     
+       529    
+       530      // Test random graphs
+       531      console.log('\nGenerating and testing random graphs...');
+       532 -    const randomGraphs = generateRandomGraphs(100, 3, 8);
+       532 +    const randomGraphs = generateRandomGraphs(500, 3, 12);
+       533      const randomResults = [];
+       534    
+       535      for (const [name, graph] of Object.entries(randomGraphs)) {
+
+● Bash(node test-modified-eigentrust.js)
+  ⎿  Running in the background (down arrow to manage)
+
+● BashOutput(Reading shell output)
+  ⎿  ================================================================================
+     MODIFIED EIGENTRUST TEST SUITE
+     ================================================================================
+     … +5 lines (ctrl+o to expand)
+
+● Bash(sleep 30)
+  ⎿  (No content)
+
+● BashOutput(Reading shell output)
+  ⎿  ================================================================================
+     MODIFIED EIGENTRUST TEST SUITE
+     ================================================================================
+     … +38 lines (ctrl+o to expand)
+
+● Perfect! 72,550 tests, 0 violations, 100% success rate!
+
+  Let me create a summary document explaining the theoretical modification:
+
+● Write(EIGENTRUST-MODIFICATION.md)
+  ⎿  Wrote 186 lines to EIGENTRUST-MODIFICATION.md                                                                                                                                                   
+     # Modified EigenTrust Algorithm
+     ## Problem Statement
+     In standard EigenTrust, a vertex changing its outgoing trust allocations can affect its own trust score due to feedback loops in the network. This creates a circular dependency where users can
+     potentially game their own scores.
+     ## Desired Property
+     **Allocation Independence**: A vertex k changing its outgoing trust allocations should NOT change its own trust score T_k.
+     … +176 lines (ctrl+o to expand)
+
+● Perfect! I've created a comprehensive test suite and documentation for the modified EigenTrust algorithm. Here's what was accomplished:
+
+  Summary
+
+  Property Tested: A vertex changing its trust allocations does NOT change its own trust score.
+
+  Solution: Two-phase decoupled computation
+  1. For each vertex k, compute all other vertices' scores in a subgraph where k allocates nothing
+  2. Compute k's score from those "frozen" scores and incoming edges
+  3. Critical: No normalization (it couples all scores together)
+
+  Results:
+  - 72,550 test cases across diverse graph structures
+  - 0 violations
+  - 100% success rate
+
+  The test suite includes:
+  - 9 base graphs (cycles, stars, self-loops, complete graphs, etc.)
+  - 500 randomly generated graphs (3-12 vertices)
+  - ~150 allocation modifications per vertex
+  - Various corner cases (all-to-unit, self-loops, disconnected components)
+
+  Key Finding: Standard EigenTrust fails the property in ~76% of cases, while the modified algorithm maintains it perfectly across all tests.
+
+  The files created:
+  - test-modified-eigentrust.js - Comprehensive test suite that generates thousands of test cases programmatically
+  - EIGENTRUST-MODIFICATION.md - Theoretical explanation, algorithm description, and results
