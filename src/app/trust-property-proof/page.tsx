@@ -540,6 +540,7 @@ function InteractiveGraph() {
     standard: Record<string, number>;
     modified: Record<string, number>;
   } | null>(null);
+  const [showFullGraph, setShowFullGraph] = useState(false);
 
   // Compute initial scores
   useEffect(() => {
@@ -616,11 +617,19 @@ function InteractiveGraph() {
         </p>
       </div>
 
-      <div className="grid grid-cols-2 gap-8">
+      <div className="flex gap-8">
         {/* Left: Graph Visualization */}
-        <div>
-          <h3 className="text-lg font-semibold mb-4 text-center">Trust Network</h3>
-          <svg width="700" height="500" className="border border-gray-200 rounded-lg">
+        <div className="flex-1">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold">Trust Network</h3>
+            <button
+              onClick={() => setShowFullGraph(!showFullGraph)}
+              className="px-4 py-2 rounded-lg bg-indigo-100 hover:bg-indigo-200 text-indigo-700 text-sm font-medium transition-colors"
+            >
+              {showFullGraph ? 'Show Selected Only' : 'Show Full Graph'}
+            </button>
+          </div>
+          <svg width="650" height="500" className="border border-gray-200 rounded-lg">
             <defs>
               <marker
                 id="arrowhead-interactive"
@@ -634,61 +643,116 @@ function InteractiveGraph() {
               </marker>
             </defs>
 
-            {/* Draw edges only for selected node */}
-            {selectedNode && initialNodes.map((targetNode) => {
-              if (targetNode.id === selectedNode) return null;
+            {/* Draw edges */}
+            {showFullGraph ? (
+              // Show all edges in the graph
+              initialNodes.map((fromNode) => {
+                const allocations = graph[fromNode.id] || {};
+                return Object.entries(allocations).map(([targetId, weight]) => {
+                  if (targetId === UNIT_VERTEX || weight === 0) return null;
+                  const targetNode = initialNodes.find(n => n.id === targetId);
+                  if (!targetNode) return null;
 
-              const fromNode = initialNodes.find(n => n.id === selectedNode);
-              if (!fromNode) return null;
+                  const dx = targetNode.x - fromNode.x;
+                  const dy = targetNode.y - fromNode.y;
+                  const angle = Math.atan2(dy, dx);
+                  const nodeRadius = 35;
 
-              const weight = sliderValues[targetNode.id] || 0;
-              if (weight === 0) return null;
+                  const startX = fromNode.x + Math.cos(angle) * nodeRadius;
+                  const startY = fromNode.y + Math.sin(angle) * nodeRadius;
+                  const endX = targetNode.x - Math.cos(angle) * nodeRadius;
+                  const endY = targetNode.y - Math.sin(angle) * nodeRadius;
 
-              const dx = targetNode.x - fromNode.x;
-              const dy = targetNode.y - fromNode.y;
-              const angle = Math.atan2(dy, dx);
-              const nodeRadius = 30;
+                  const midX = (startX + endX) / 2;
+                  const midY = (startY + endY) / 2;
 
-              const startX = fromNode.x + Math.cos(angle) * nodeRadius;
-              const startY = fromNode.y + Math.sin(angle) * nodeRadius;
-              const endX = targetNode.x - Math.cos(angle) * nodeRadius;
-              const endY = targetNode.y - Math.sin(angle) * nodeRadius;
+                  const isFromSelected = fromNode.id === selectedNode;
+                  const opacity = isFromSelected ? 0.3 + (weight * 0.7) : 0.15;
+                  const strokeWidth = isFromSelected ? 2 + (weight * 6) : 1.5;
 
-              const midX = (startX + endX) / 2;
-              const midY = (startY + endY) / 2;
+                  return (
+                    <g key={`${fromNode.id}-${targetNode.id}`}>
+                      <line
+                        x1={startX}
+                        y1={startY}
+                        x2={endX}
+                        y2={endY}
+                        stroke={isFromSelected ? "#6366f1" : "#9ca3af"}
+                        strokeWidth={strokeWidth}
+                        opacity={opacity}
+                        markerEnd="url(#arrowhead-interactive)"
+                      />
+                      {isFromSelected && (
+                        <text
+                          x={midX}
+                          y={midY - 8}
+                          textAnchor="middle"
+                          className="text-sm font-semibold"
+                          fill="#6366f1"
+                        >
+                          {Math.round(weight * 100)}%
+                        </text>
+                      )}
+                    </g>
+                  );
+                });
+              })
+            ) : (
+              // Show only selected node's edges
+              selectedNode && initialNodes.map((targetNode) => {
+                if (targetNode.id === selectedNode) return null;
 
-              const opacity = 0.3 + (weight * 0.7);
-              const strokeWidth = 2 + (weight * 6);
+                const fromNode = initialNodes.find(n => n.id === selectedNode);
+                if (!fromNode) return null;
 
-              return (
-                <g key={`${fromNode.id}-${targetNode.id}`}>
-                  <line
-                    x1={startX}
-                    y1={startY}
-                    x2={endX}
-                    y2={endY}
-                    stroke="#6366f1"
-                    strokeWidth={strokeWidth}
-                    opacity={opacity}
-                    markerEnd="url(#arrowhead-interactive)"
-                  />
-                  <text
-                    x={midX}
-                    y={midY - 8}
-                    textAnchor="middle"
-                    className="text-sm font-semibold"
-                    fill="#6366f1"
-                  >
-                    {Math.round(weight * 100)}%
-                  </text>
-                </g>
-              );
-            })}
+                const weight = sliderValues[targetNode.id] || 0;
+                if (weight === 0) return null;
+
+                const dx = targetNode.x - fromNode.x;
+                const dy = targetNode.y - fromNode.y;
+                const angle = Math.atan2(dy, dx);
+                const nodeRadius = 35;
+
+                const startX = fromNode.x + Math.cos(angle) * nodeRadius;
+                const startY = fromNode.y + Math.sin(angle) * nodeRadius;
+                const endX = targetNode.x - Math.cos(angle) * nodeRadius;
+                const endY = targetNode.y - Math.sin(angle) * nodeRadius;
+
+                const midX = (startX + endX) / 2;
+                const midY = (startY + endY) / 2;
+
+                const opacity = 0.3 + (weight * 0.7);
+                const strokeWidth = 2 + (weight * 6);
+
+                return (
+                  <g key={`${fromNode.id}-${targetNode.id}`}>
+                    <line
+                      x1={startX}
+                      y1={startY}
+                      x2={endX}
+                      y2={endY}
+                      stroke="#6366f1"
+                      strokeWidth={strokeWidth}
+                      opacity={opacity}
+                      markerEnd="url(#arrowhead-interactive)"
+                    />
+                    <text
+                      x={midX}
+                      y={midY - 8}
+                      textAnchor="middle"
+                      className="text-sm font-semibold"
+                      fill="#6366f1"
+                    >
+                      {Math.round(weight * 100)}%
+                    </text>
+                  </g>
+                );
+              })
+            )}
 
             {/* Draw nodes */}
             {initialNodes.map((node) => {
               const isSelected = node.id === selectedNode;
-              const standardScore = results?.standard[node.id] || 0;
               const modifiedScore = results?.modified[node.id] || 0;
 
               return (
@@ -696,20 +760,31 @@ function InteractiveGraph() {
                   <circle
                     cx={node.x}
                     cy={node.y}
-                    r={30}
+                    r={35}
                     fill={isSelected ? '#6366f1' : '#e0e7ff'}
                     stroke={isSelected ? '#4f46e5' : '#a5b4fc'}
                     strokeWidth={isSelected ? 4 : 2}
                     className="transition-all duration-300 hover:stroke-indigo-600"
                   />
+                  {/* Node label */}
                   <text
                     x={node.x}
-                    y={node.y + 5}
+                    y={node.y - 5}
                     textAnchor="middle"
-                    className="text-sm font-bold pointer-events-none"
+                    className="text-xs font-bold pointer-events-none"
                     fill={isSelected ? 'white' : '#4f46e5'}
                   >
                     {node.label}
+                  </text>
+                  {/* Trust score */}
+                  <text
+                    x={node.x}
+                    y={node.y + 10}
+                    textAnchor="middle"
+                    className="text-xs font-semibold pointer-events-none"
+                    fill={isSelected ? 'white' : '#6366f1'}
+                  >
+                    {modifiedScore.toFixed(3)}
                   </text>
                 </g>
               );
@@ -718,7 +793,7 @@ function InteractiveGraph() {
         </div>
 
         {/* Right: Sliders and Results */}
-        <div>
+        <div className="w-96 flex-shrink-0">
           {!selectedNode ? (
             <div className="flex items-center justify-center h-full">
               <div className="text-center text-gray-400">
