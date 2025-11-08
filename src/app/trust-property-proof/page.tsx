@@ -528,6 +528,9 @@ function InteractiveGraph() {
     H: { A: 0.2, C: 0.2, E: 0.2, G: 0.2, [UNIT_VERTEX]: 0.2 },
   };
 
+  const [graphMode, setGraphMode] = useState<'predefined' | 'custom'>('predefined');
+  const [customNodeCount, setCustomNodeCount] = useState(5);
+  const [nodes, setNodes] = useState(initialNodes);
   const [graph, setGraph] = useState(initialGraph);
   const [selectedNode, setSelectedNode] = useState<string | null>(null);
   const [sliderValues, setSliderValues] = useState<Record<string, number>>({});
@@ -604,7 +607,80 @@ function InteractiveGraph() {
     await computeScores(newGraph);
   };
 
-  const allTargets = [...initialNodes.map(n => n.id).filter(id => id !== selectedNode), UNIT_VERTEX];
+  const allTargets = [...nodes.map(n => n.id).filter(id => id !== selectedNode), UNIT_VERTEX];
+
+  // Generate custom nodes in a circle
+  const generateCustomNodes = (count: number): GraphNode[] => {
+    const customNodes: GraphNode[] = [];
+    const centerX = 325;
+    const centerY = 250;
+    const radius = 180;
+
+    for (let i = 0; i < count; i++) {
+      const angle = (i / count) * 2 * Math.PI - Math.PI / 2; // Start from top
+      const x = Math.round(centerX + radius * Math.cos(angle));
+      const y = Math.round(centerY + radius * Math.sin(angle));
+
+      customNodes.push({
+        id: `N${i}`,
+        x,
+        y,
+        label: `Node ${i + 1}`,
+      });
+    }
+
+    return customNodes;
+  };
+
+  // Initialize empty graph for custom nodes
+  const initializeEmptyGraph = (nodeList: GraphNode[]): Record<string, Record<string, number>> => {
+    const emptyGraph: Record<string, Record<string, number>> = {};
+    nodeList.forEach(node => {
+      emptyGraph[node.id] = { [UNIT_VERTEX]: 1.0 }; // Start with all allocation to unit
+    });
+    return emptyGraph;
+  };
+
+  // Switch to custom mode
+  const handleSwitchToCustom = () => {
+    const customNodes = generateCustomNodes(customNodeCount);
+    const emptyGraph = initializeEmptyGraph(customNodes);
+
+    setNodes(customNodes);
+    setGraph(emptyGraph);
+    setGraphMode('custom');
+    setSelectedNode(null);
+    computeScores(emptyGraph, true);
+  };
+
+  // Switch to predefined mode
+  const handleSwitchToPredefined = () => {
+    setNodes(initialNodes);
+    setGraph(initialGraph);
+    setGraphMode('predefined');
+    setSelectedNode(null);
+    computeScores(initialGraph, true);
+  };
+
+  // Clear custom graph
+  const handleClearCustomGraph = () => {
+    const emptyGraph = initializeEmptyGraph(nodes);
+    setGraph(emptyGraph);
+    setSelectedNode(null);
+    computeScores(emptyGraph, true);
+  };
+
+  // Update custom node count
+  const handleUpdateNodeCount = (count: number) => {
+    const customNodes = generateCustomNodes(count);
+    const emptyGraph = initializeEmptyGraph(customNodes);
+
+    setNodes(customNodes);
+    setGraph(emptyGraph);
+    setCustomNodeCount(count);
+    setSelectedNode(null);
+    computeScores(emptyGraph, true);
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
@@ -615,6 +691,61 @@ function InteractiveGraph() {
         <p className="text-gray-600">
           Click any node to modify its trust allocations. Watch how standard EigenTrust changes the node's score, but our modified algorithm keeps it constant.
         </p>
+      </div>
+
+      {/* Graph Mode Selector */}
+      <div className="mb-6 p-4 bg-gray-50 rounded-lg border border-gray-200">
+        <div className="flex items-center gap-4 mb-3">
+          <span className="font-semibold text-gray-700">Graph Mode:</span>
+          <button
+            onClick={handleSwitchToPredefined}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              graphMode === 'predefined'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+            }`}
+          >
+            Predefined (Alice-Henry)
+          </button>
+          <button
+            onClick={handleSwitchToCustom}
+            className={`px-4 py-2 rounded-lg font-medium transition-colors ${
+              graphMode === 'custom'
+                ? 'bg-indigo-600 text-white'
+                : 'bg-white text-gray-700 hover:bg-gray-100 border border-gray-300'
+            }`}
+          >
+            Custom Graph
+          </button>
+        </div>
+
+        {/* Custom Graph Controls */}
+        {graphMode === 'custom' && (
+          <div className="flex items-center gap-4 pt-3 border-t border-gray-300">
+            <label className="flex items-center gap-2">
+              <span className="text-sm font-medium text-gray-700">Nodes:</span>
+              <input
+                type="number"
+                min="3"
+                max="12"
+                value={customNodeCount}
+                onChange={(e) => {
+                  const val = parseInt(e.target.value);
+                  if (val >= 3 && val <= 12) {
+                    handleUpdateNodeCount(val);
+                  }
+                }}
+                className="w-16 px-2 py-1 border border-gray-300 rounded text-center"
+              />
+            </label>
+            <button
+              onClick={handleClearCustomGraph}
+              className="px-4 py-2 rounded-lg bg-white text-gray-700 hover:bg-gray-100 border border-gray-300 font-medium text-sm transition-colors"
+            >
+              Clear All Allocations
+            </button>
+          </div>
+        )}
       </div>
 
       <div className="flex gap-8">
@@ -646,11 +777,11 @@ function InteractiveGraph() {
             {/* Draw edges */}
             {showFullGraph ? (
               // Show all edges in the graph
-              initialNodes.map((fromNode) => {
+              nodes.map((fromNode) => {
                 const allocations = graph[fromNode.id] || {};
                 return Object.entries(allocations).map(([targetId, weight]) => {
                   if (targetId === UNIT_VERTEX || weight === 0) return null;
-                  const targetNode = initialNodes.find(n => n.id === targetId);
+                  const targetNode = nodes.find(n => n.id === targetId);
                   if (!targetNode) return null;
 
                   const dx = targetNode.x - fromNode.x;
@@ -699,10 +830,10 @@ function InteractiveGraph() {
               })
             ) : (
               // Show only selected node's edges
-              selectedNode && initialNodes.map((targetNode) => {
+              selectedNode && nodes.map((targetNode) => {
                 if (targetNode.id === selectedNode) return null;
 
-                const fromNode = initialNodes.find(n => n.id === selectedNode);
+                const fromNode = nodes.find(n => n.id === selectedNode);
                 if (!fromNode) return null;
 
                 const weight = sliderValues[targetNode.id] || 0;
@@ -751,7 +882,7 @@ function InteractiveGraph() {
             )}
 
             {/* Draw nodes */}
-            {initialNodes.map((node) => {
+            {nodes.map((node) => {
               const isSelected = node.id === selectedNode;
               const modifiedScore = results?.modified[node.id] || 0;
 
@@ -804,14 +935,14 @@ function InteractiveGraph() {
           ) : (
             <div>
               <h3 className="text-lg font-semibold mb-4">
-                {initialNodes.find(n => n.id === selectedNode)?.label}'s Trust Allocations
+                {nodes.find(n => n.id === selectedNode)?.label}'s Trust Allocations
               </h3>
 
               {/* Sliders */}
               <div className="space-y-3 mb-6 max-h-80 overflow-y-auto">
                 {allTargets.map((target) => {
                   const value = sliderValues[target] || 0;
-                  const label = target === UNIT_VERTEX ? 'Unit ()' : initialNodes.find(n => n.id === target)?.label || target;
+                  const label = target === UNIT_VERTEX ? 'Unit ()' : nodes.find(n => n.id === target)?.label || target;
 
                   return (
                     <div key={target} className="p-3 rounded-lg border bg-white border-gray-200">
