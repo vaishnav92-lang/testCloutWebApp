@@ -39,6 +39,7 @@ model User {
   totalInvitesUsed         Int                   @default(0)
   userType                 UserType              @default(REFERRER)
   isHiringManager          Boolean               @default(false)
+  isGrantmaker             Boolean               @default(false)
   cloutScore               Float                 @default(0.0)
   endorsementsScore        Float                 @default(0.0)
   networkValue             Float                 @default(0.0)
@@ -71,6 +72,8 @@ model User {
   jobForwardsSent          JobForward[]          @relation("JobForwardFrom")
   jobForwardsReceived      JobForward[]          @relation("JobForwardTo")
   ownedJobs                Job[]
+  ownedGrants              Grant[]
+  grantApplications        GrantApplication[]
   referralsAsCandidate     Referral[]            @relation("ReferralCandidate")
   referralsAsReferrer      Referral[]            @relation("ReferralReferrer")
   relationshipsAsUser1     Relationship[]        @relation("RelationshipUser1")
@@ -428,6 +431,56 @@ enum JobStatus {
   CLOSED
 }
 
+model Grant {
+  id           String            @id @default(cuid())
+  title        String
+  description  String
+  amount       Float
+  currency     String            @default("USD")
+  status       GrantStatus       @default(DRAFT)
+  createdAt    DateTime          @default(now())
+  updatedAt    DateTime          @updatedAt
+  publishedAt  DateTime?
+  deadline     DateTime?
+  ownerId      String
+  owner        User              @relation(fields: [ownerId], references: [id])
+  recommenders GrantRecommender[]
+  applications GrantApplication[]
+
+  @@map("grants")
+}
+
+model GrantRecommender {
+  id             String   @id @default(cuid())
+  grantId        String
+  email          String
+  trustWeight    Float    // Trust allocation (0.0 to 1.0)
+  addedAt        DateTime @default(now())
+  invitedAt      DateTime?
+  respondedAt    DateTime?
+  status         RecommenderStatus @default(PENDING)
+  grant          Grant    @relation(fields: [grantId], references: [id], onDelete: Cascade)
+
+  @@unique([grantId, email])
+  @@map("grant_recommenders")
+}
+
+model GrantApplication {
+  id          String            @id @default(cuid())
+  grantId     String
+  applicantId String?           // Can be null if external applicant
+  email       String
+  proposal    String
+  status      ApplicationStatus @default(APPLIED)
+  submittedAt DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  grant       Grant             @relation(fields: [grantId], references: [id])
+  applicant   User?             @relation(fields: [applicantId], references: [id])
+
+  @@unique([grantId, email])
+  @@map("grant_applications")
+}
+
 enum ApplicationStatus {
   APPLIED
   REVIEWING
@@ -548,4 +601,18 @@ enum ReferralStatus {
   SCREENING
   INTERVIEWING
   HIRED
+}
+
+enum GrantStatus {
+  DRAFT
+  ACTIVE
+  CLOSED
+  COMPLETED
+}
+
+enum RecommenderStatus {
+  PENDING
+  INVITED
+  ACCEPTED
+  DECLINED
 }

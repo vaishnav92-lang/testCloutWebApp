@@ -20,6 +20,7 @@ export default function SimpleChatbot() {
   ])
   const [inputValue, setInputValue] = useState('')
   const [isLoading, setIsLoading] = useState(false)
+  const [isGenerating, setIsGenerating] = useState(false)
   const messagesEndRef = useRef<HTMLDivElement>(null)
 
   const scrollToBottom = () => {
@@ -91,6 +92,42 @@ export default function SimpleChatbot() {
     }
   }
 
+  const generateJobDescription = async () => {
+    if (messages.length < 3) {
+      alert('Please have a conversation first before generating the job description.')
+      return
+    }
+
+    setIsGenerating(true)
+    try {
+      const response = await fetch('/api/chatbot/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          conversationHistory: messages
+        })
+      })
+
+      if (!response.ok) {
+        throw new Error('Failed to generate job description')
+      }
+
+      const data = await response.json()
+
+      // Store the generated form data in localStorage and redirect to form
+      localStorage.setItem('aiGeneratedJobData', JSON.stringify(data.formData))
+      window.location.href = '/hiring-manager/job/new?from-ai=true'
+
+    } catch (error) {
+      console.error('Error generating job description:', error)
+      alert('Failed to generate job description. Please try again.')
+    } finally {
+      setIsGenerating(false)
+    }
+  }
+
   return (
     <div className="flex flex-col h-[600px] max-w-2xl mx-auto bg-white border border-gray-200 rounded-lg shadow-lg">
       {/* Header */}
@@ -140,7 +177,7 @@ export default function SimpleChatbot() {
 
       {/* Input */}
       <div className="border-t border-gray-200 p-4">
-        <div className="flex space-x-2">
+        <div className="flex space-x-2 mb-3">
           <textarea
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
@@ -158,6 +195,34 @@ export default function SimpleChatbot() {
             Send
           </button>
         </div>
+
+        {/* Generate Button */}
+        {messages.length > 3 && (
+          <div className="border-t border-gray-100 pt-3">
+            <button
+              onClick={generateJobDescription}
+              disabled={isGenerating}
+              className="w-full bg-green-600 hover:bg-green-700 disabled:bg-gray-300 text-white px-4 py-3 rounded-lg transition-colors font-medium flex items-center justify-center"
+            >
+              {isGenerating ? (
+                <>
+                  <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin mr-2"></div>
+                  Generating Job Description...
+                </>
+              ) : (
+                <>
+                  <svg className="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                  </svg>
+                  Generate Job Description
+                </>
+              )}
+            </button>
+            <p className="text-xs text-gray-500 mt-2 text-center">
+              This will create a job posting form pre-filled with our conversation details
+            </p>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -88,9 +88,10 @@ const initialFormData: JobFormData = {
 interface JobPostingQuestionnaireProps {
   jobId?: string // For editing existing jobs
   onComplete?: (jobId: string) => void
+  initialData?: Partial<JobFormData> // For AI-generated pre-filling
 }
 
-export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostingQuestionnaireProps) {
+export default function JobPostingQuestionnaire({ jobId, onComplete, initialData }: JobPostingQuestionnaireProps) {
   const [currentSection, setCurrentSection] = useState(0) // 0 = intro, 1-7 = sections, 8 = review
   const [formData, setFormData] = useState<JobFormData>(initialFormData)
   const [loading, setLoading] = useState(false)
@@ -100,7 +101,7 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
   const [currentJobId, setCurrentJobId] = useState<string | undefined>(jobId) // Track current job ID
   const router = useRouter()
 
-  // Load existing job data when editing
+  // Load initial data (either from existing job or AI-generated)
   useEffect(() => {
     if (jobId) {
       const loadJobData = async () => {
@@ -145,8 +146,15 @@ export default function JobPostingQuestionnaire({ jobId, onComplete }: JobPostin
       }
 
       loadJobData()
+    } else if (initialData) {
+      // Pre-fill with AI-generated data
+      setFormData(prev => ({
+        ...prev,
+        ...initialData
+      }))
+      setIsLoadingJob(false)
     }
-  }, [jobId])
+  }, [jobId, initialData])
 
   const sections = [
     'Introduction',

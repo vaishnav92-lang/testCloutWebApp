@@ -75,6 +75,16 @@ export default function DashboardLayout({ children }: { children: React.ReactNod
                      Post opportunities
                    </Link>
                   )}
+                  {session.user.isGrantmaker && (
+                     <Link href="/dashboard/grantmaker"
+                     className={`whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm ${
+                       pathname === '/dashboard/grantmaker'
+                         ? 'border-indigo-500 text-indigo-600'
+                         : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+                     }`}>
+                     Manage grants
+                   </Link>
+                  )}
                 </nav>
               </div>
             </div>
