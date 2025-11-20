@@ -218,7 +218,7 @@ const createMockEndorsements = (): DemoEndorsement[] => [
     relationship: 'Peer',
     status: 'PENDING_CANDIDATE_ACTION',
     createdAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000),
-    message: 'Always goes above and beyond',
+    message: 'Great engineer, has a photographic memory of the system',
   },
 ]
 
