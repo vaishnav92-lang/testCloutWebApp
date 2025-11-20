@@ -8,9 +8,10 @@ import { useDemoAuth } from '@/hooks/useDemo'
 export default function DemoDashboardPage() {
   const router = useRouter()
   useDemoAuth()
-  const { state } = useDemoContext()
+  const { state, clearDemoData } = useDemoContext()
 
   const handleLogout = () => {
+    clearDemoData()
     localStorage.removeItem('demoToken')
     router.push('/demo/auth/login')
   }
