@@ -45,17 +45,25 @@ export default function Home() {
         </p>
 
         <div className="space-y-4">
-          <div>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link
               href="/auth/signin"
-              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700 mr-4"
+              className="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md text-white bg-indigo-600 hover:bg-indigo-700"
             >
               Sign In
+            </Link>
+            <Link
+              href="/demo"
+              className="inline-flex items-center px-6 py-3 border-2 border-indigo-600 text-base font-medium rounded-md text-indigo-600 hover:bg-indigo-50"
+            >
+              Try Demo
             </Link>
           </div>
 
           <p className="text-sm text-gray-500">
             Join by invitation only. Ask a current member for a referral link.
+            <br />
+            <span className="text-indigo-600 font-medium">✨ New: Try the demo version with sample data</span>
           </p>
         </div>
       </div>
