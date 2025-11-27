@@ -236,6 +236,36 @@ This helps us track referrals and ensure you get proper credit!
   }
 }
 
+// Get Discord channel IDs from environment variable
+export function getDiscordChannels(): string[] {
+  try {
+    // Try DISCORD_CHANNEL_IDS (JSON array or comma-separated)
+    const channelIds = process.env.DISCORD_CHANNEL_IDS;
+    if (channelIds) {
+      try {
+        const parsed = JSON.parse(channelIds);
+        if (Array.isArray(parsed)) {
+          return parsed;
+        }
+      } catch {
+        // If not JSON, try comma-separated
+        return channelIds.split(",").map((id) => id.trim()).filter(Boolean);
+      }
+    }
+
+    // Backward compatibility with single channel
+    const singleChannelId = process.env.DISCORD_CHANNEL_ID;
+    if (singleChannelId) {
+      return [singleChannelId];
+    }
+
+    return [];
+  } catch (error) {
+    console.error("[Discord] Error getting channel IDs:", error);
+    return [];
+  }
+}
+
 export async function postJobToDiscord(jobId: string): Promise<boolean> {
   const client = getDiscordClient();
   if (!client) {
@@ -247,15 +277,9 @@ export async function postJobToDiscord(jobId: string): Promise<boolean> {
     // Dynamically import discord.js modules
     const { EmbedBuilder, ChannelType } = await import("discord.js");
 
-    const channelId = process.env.DISCORD_CHANNEL_ID;
-    if (!channelId) {
-      console.error("[Discord] Channel ID not configured");
-      return false;
-    }
-
-    const channel = await client.channels.fetch(channelId);
-    if (!channel || channel.type !== ChannelType.GuildText) {
-      console.error("[Discord] Invalid channel");
+    const channelIds = getDiscordChannels();
+    if (channelIds.length === 0) {
+      console.error("[Discord] No channel IDs configured");
       return false;
     }
 
@@ -304,14 +328,35 @@ export async function postJobToDiscord(jobId: string): Promise<boolean> {
       embed.setThumbnail(job.company.logoUrl);
     }
 
-    // Send message and add reactions
-    const message = await channel.send({ embeds: [embed] });
-    await message.react("1️⃣");
-    await message.react("2️⃣");
-    await message.react("3️⃣");
+    // Post to all configured channels
+    let successCount = 0;
+    let failCount = 0;
 
-    console.log(`[Discord] Job ${jobId} posted successfully`);
-    return true;
+    for (const channelId of channelIds) {
+      try {
+        const channel = await client.channels.fetch(channelId);
+        if (!channel || channel.type !== ChannelType.GuildText) {
+          console.error(`[Discord] Invalid channel: ${channelId}`);
+          failCount++;
+          continue;
+        }
+
+        // Send message and add reactions
+        const message = await channel.send({ embeds: [embed] });
+        await message.react("1️⃣");
+        await message.react("2️⃣");
+        await message.react("3️⃣");
+
+        console.log(`[Discord] Job ${jobId} posted successfully to channel ${channelId}`);
+        successCount++;
+      } catch (error) {
+        console.error(`[Discord] Error posting to channel ${channelId}:`, error);
+        failCount++;
+      }
+    }
+
+    console.log(`[Discord] Job ${jobId} posted to ${successCount}/${channelIds.length} channels`);
+    return successCount > 0;
   } catch (error) {
     console.error("[Discord] Error posting job:", error);
     return false;
