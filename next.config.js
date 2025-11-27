@@ -13,6 +13,13 @@ const nextConfig = {
       },
     },
   },
+  webpack: (config, { isServer }) => {
+    // Mark discord.js as external for server-side only
+    if (isServer) {
+      config.externals.push('discord.js', 'zlib-sync');
+    }
+    return config;
+  },
   async redirects() {
     return [
       {

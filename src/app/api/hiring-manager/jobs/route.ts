@@ -14,6 +14,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { prisma } from '@/lib/prisma'
 import { authOptions } from '@/lib/auth'
+import { initializeDiscordBot, postJobToDiscord } from '@/lib/discord-service'
 
 export async function POST(request: NextRequest) {
   try {
@@ -123,6 +124,20 @@ export async function POST(request: NextRequest) {
         }
       }
     })
+
+    // POST TO DISCORD if job is ACTIVE
+    if (job.status === 'ACTIVE') {
+      try {
+        // Initialize bot if needed
+        await initializeDiscordBot()
+        // Post to all configured channels
+        await postJobToDiscord(job.id)
+        console.log(`[Job Creation] Posted job ${job.id} to Discord`)
+      } catch (discordError) {
+        // Don't fail job creation if Discord posting fails
+        console.error('[Job Creation] Failed to post to Discord:', discordError)
+      }
+    }
 
     return NextResponse.json({
       jobId: job.id,
