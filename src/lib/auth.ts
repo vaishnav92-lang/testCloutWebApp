@@ -71,6 +71,36 @@ export const authOptions: NextAuthOptions = {
       },
     }),
 
+    // Add credentials provider for magic link login
+    CredentialsProvider({
+      name: 'magic-link',
+      credentials: {
+        email: { label: "Email", type: "email" },
+        token: { label: "Token", type: "text" }
+      },
+      async authorize(credentials) {
+        if (!credentials?.email) return null
+
+        // Special case for magic link login
+        if (credentials.email && credentials.token === 'MAGIC_LINK_AUTO_LOGIN') {
+          // Find the user - they should have been authenticated via magic link already
+          const user = await prisma.user.findUnique({
+            where: { email: credentials.email }
+          })
+
+          if (user) {
+            return {
+              id: user.id,
+              email: user.email,
+              name: `${user.firstName || ''} ${user.lastName || ''}`.trim() || user.email
+            }
+          }
+        }
+
+        return null
+      }
+    }),
+
   ],
 
   // Custom auth pages (instead of default NextAuth pages)
@@ -128,6 +158,7 @@ export const authOptions: NextAuthOptions = {
             referralCode: true,
             inviteUsed: true,
             isHiringManager: true,
+            isGrantmaker: true,
             isAdmin: true,
           }
         })
@@ -141,7 +172,13 @@ export const authOptions: NextAuthOptions = {
           session.user.referralCode = dbUser.referralCode
           session.user.inviteUsed = dbUser.inviteUsed
           session.user.isHiringManager = dbUser.isHiringManager
+          session.user.isGrantmaker = dbUser.isGrantmaker
           session.user.isAdmin = dbUser.isAdmin
+          console.log("🔥 SESSION CALLBACK DEBUG:", {
+            email: session.user.email,
+            isHiringManager: dbUser.isHiringManager,
+            isGrantmaker: dbUser.isGrantmaker
+          })
         }
       }
 

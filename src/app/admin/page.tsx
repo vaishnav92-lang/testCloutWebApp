@@ -116,6 +116,31 @@ export default function AdminDashboard() {
               </div>
             </div>
 
+            {/* Job Management */}
+            <div className="bg-white overflow-hidden shadow rounded-lg">
+              <div className="p-6">
+                <div className="flex items-center">
+                  <div className="flex-shrink-0">
+                    <svg className="h-6 w-6 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 13.255A2 2 0 0019.255 15H8.745A2 2 0 007 13.255V8.745A2 2 0 008.745 7h10.51A2 2 0 0021 8.745v4.51zM3 17h18" />
+                    </svg>
+                  </div>
+                  <div className="ml-4 w-0 flex-1">
+                    <h3 className="text-lg font-medium text-gray-900">Job Management</h3>
+                    <p className="text-sm text-gray-500 mt-1">Assign jobs to hiring managers</p>
+                  </div>
+                </div>
+                <div className="mt-6">
+                  <Link
+                    href="/admin/jobs"
+                    className="inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md text-white bg-purple-600 hover:bg-purple-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-purple-500"
+                  >
+                    Manage Jobs
+                  </Link>
+                </div>
+              </div>
+            </div>
+
             {/* Trust Allocations (NEW) */}
             <div className="bg-white overflow-hidden shadow rounded-lg">
               <div className="p-6">
