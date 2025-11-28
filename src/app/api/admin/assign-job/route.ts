@@ -92,7 +92,7 @@ export async function POST(req: NextRequest) {
       // New user - send invitation with magic link
       const magicLink = `${baseUrl}/api/auth/magic-login?token=${inviteToken}&redirect=${encodeURIComponent(editUrl)}`
 
-      subject = 'You've been invited to manage a job on Clout Careers'
+      subject = `You've been invited to manage a job on Clout Careers`
       emailContent = `
         <h2>Welcome to Clout Careers!</h2>
         <p>You've been assigned as the hiring manager for the position: <strong>${job.title}</strong> at ${job.company.name}.</p>
