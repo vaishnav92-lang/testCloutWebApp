@@ -1,10 +1,10 @@
 'use client'
 
-import { useEffect } from 'react'
+import { useEffect, Suspense } from 'react'
 import { signIn } from 'next-auth/react'
 import { useSearchParams } from 'next/navigation'
 
-export default function MagicLoginHandler() {
+function MagicLoginHandlerContent() {
   const searchParams = useSearchParams()
   const redirect = searchParams.get('redirect') || '/dashboard'
 
@@ -56,5 +56,20 @@ export default function MagicLoginHandler() {
         <p className="mt-4 text-gray-600">Logging you in...</p>
       </div>
     </div>
+  )
+}
+
+export default function MagicLoginHandler() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen flex items-center justify-center bg-gray-50">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Loading...</p>
+        </div>
+      </div>
+    }>
+      <MagicLoginHandlerContent />
+    </Suspense>
   )
 }
