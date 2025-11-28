@@ -28,17 +28,20 @@ function MagicLoginHandlerContent() {
         })
 
         if (result?.ok) {
+          // Force a hard refresh to reload session data
           window.location.href = redirect
         } else {
           // Fallback to email provider
-          await signIn('email', {
+          const emailResult = await signIn('email', {
             email: decodeURIComponent(email),
             redirect: false
           })
-          // Check for the verification page redirect
-          setTimeout(() => {
+
+          if (emailResult?.ok) {
             window.location.href = redirect
-          }, 1000)
+          } else {
+            window.location.href = '/auth/signin?error=MagicLinkFailed'
+          }
         }
       } else {
         // No email cookie found, redirect to signin

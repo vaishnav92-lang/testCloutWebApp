@@ -83,7 +83,7 @@ export async function POST(req: NextRequest) {
 
     // Prepare email content
     const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000'
-    const editUrl = `${baseUrl}/dashboard/hiring-manager/jobs/${jobId}/edit`
+    const editUrl = `${baseUrl}/dashboard/hiring-manager`
 
     let emailContent
     let subject
@@ -96,11 +96,11 @@ export async function POST(req: NextRequest) {
       emailContent = `
         <h2>Welcome to Clout Careers!</h2>
         <p>You've been assigned as the hiring manager for the position: <strong>${job.title}</strong> at ${job.company.name}.</p>
-        <p>Click the link below to access your account and start managing this job posting:</p>
+        <p>Click the link below to access your hiring manager dashboard and start managing this job posting:</p>
         <a href="${magicLink}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">
-          Access Your Job Posting
+          Access Your Dashboard
         </a>
-        <p>This link will log you in automatically and take you directly to the job editing page.</p>
+        <p>This link will log you in automatically and take you to your hiring manager dashboard where you can see all jobs you're hiring for.</p>
         <p>If the button doesn't work, copy and paste this link into your browser:</p>
         <p>${magicLink}</p>
       `
@@ -110,9 +110,9 @@ export async function POST(req: NextRequest) {
       emailContent = `
         <h2>New Job Assignment</h2>
         <p>You've been assigned as the hiring manager for the position: <strong>${job.title}</strong> at ${job.company.name}.</p>
-        <p>Click the link below to view and edit this job posting:</p>
+        <p>Click the link below to view this job posting in your hiring manager dashboard:</p>
         <a href="${editUrl}" style="display: inline-block; padding: 12px 24px; background-color: #4F46E5; color: white; text-decoration: none; border-radius: 6px; margin: 16px 0;">
-          Manage Job Posting
+          View Your Dashboard
         </a>
         <p>If the button doesn't work, copy and paste this link into your browser:</p>
         <p>${editUrl}</p>
