@@ -145,23 +145,45 @@ export const authOptions: NextAuthOptions = {
     // SESSION ENRICHMENT
     // This callback runs every time a session is accessed
     // We add custom user data from our database to the session object
-    async session({ session, user }) {
-      if (session.user && user) {
-        // Fetch additional user data from our database
-        const dbUser = await prisma.user.findUnique({
-          where: { id: user.id },
-          select: {
-            id: true,
-            firstName: true,
-            lastName: true,
-            isProfileComplete: true,
-            referralCode: true,
-            inviteUsed: true,
-            isHiringManager: true,
-            isGrantmaker: true,
-            isAdmin: true,
-          }
-        })
+    async session({ session, user, token }) {
+      if (session.user) {
+        // For credentials provider, user.id might not be available
+        // So we need to fetch by email as fallback
+        let dbUser;
+
+        if (user?.id) {
+          // Email provider with adapter - user.id is available
+          dbUser = await prisma.user.findUnique({
+            where: { id: user.id },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              isProfileComplete: true,
+              referralCode: true,
+              inviteUsed: true,
+              isHiringManager: true,
+              isGrantmaker: true,
+              isAdmin: true,
+            }
+          })
+        } else if (session.user.email) {
+          // Credentials provider - fetch by email
+          dbUser = await prisma.user.findUnique({
+            where: { email: session.user.email },
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true,
+              isProfileComplete: true,
+              referralCode: true,
+              inviteUsed: true,
+              isHiringManager: true,
+              isGrantmaker: true,
+              isAdmin: true,
+            }
+          })
+        }
 
         // Add our custom fields to the session object
         if (dbUser) {
