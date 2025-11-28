@@ -2,19 +2,30 @@
 
 import { useSession } from 'next-auth/react'
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import EndorsementForm from '@/components/EndorsementForm'
 import EndorsementNotifications from '@/components/EndorsementNotifications'
 import NetworkConnectionsCard from '@/components/NetworkConnectionsCard'
 import CloutJourneyCard from '@/components/CloutJourneyCard'
 import PendingNetworkRequests from '@/components/PendingNetworkRequests'
 import TrustNetworkManager from '@/components/TrustNetworkManager'
+import InterestRequestNotifications from '@/components/InterestRequestNotifications'
 
 export default function DashboardPage() {
   const { data: session, status } = useSession()
+  const router = useRouter()
   const [validationSuccess, setValidationSuccess] = useState(false)
   const [endorsements, setEndorsements] = useState([])
   const [endorsementsLoading, setEndorsementsLoading] = useState(true)
   const [endorsementFormOpen, setEndorsementFormOpen] = useState(false)
+
+  // Redirect hiring managers to post opportunities page by default
+  useEffect(() => {
+    if (status === 'authenticated' && session?.user?.isHiringManager) {
+      router.push('/dashboard/hiring-manager')
+      return
+    }
+  }, [status, session?.user?.isHiringManager, router])
 
   useEffect(() => {
     if (status === 'authenticated') {
@@ -47,6 +58,7 @@ export default function DashboardPage() {
 
       <div className="mb-8"><CloutJourneyCard /></div>
       <div className="mb-8"><TrustNetworkManager onRefresh={() => {}} /></div>
+      <div className="mb-8"><InterestRequestNotifications /></div>
       <EndorsementNotifications className="mb-8" />
       <div className="mb-8"><PendingNetworkRequests /></div>
       <div className="mb-8">

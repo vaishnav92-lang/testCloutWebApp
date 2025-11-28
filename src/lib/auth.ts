@@ -220,7 +220,7 @@ export const authOptions: NextAuthOptions = {
         if (callbackUrl) return callbackUrl
       }
 
-      // Default redirect to dashboard for existing users
+      // Default redirect to dashboard (client-side logic will handle hiring manager redirect)
       return `${baseUrl}/dashboard`
     },
   },

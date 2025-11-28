@@ -33,6 +33,12 @@ export default function AdminJobsPage() {
   const [assigning, setAssigning] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null)
 
+  // Gauge Interest states
+  const [gaugeJob, setGaugeJob] = useState<Job | null>(null)
+  const [users, setUsers] = useState<Array<{ id: string, email: string, firstName?: string, lastName?: string }>>([])
+  const [selectedUserId, setSelectedUserId] = useState('')
+  const [gauging, setGauging] = useState(false)
+
   // Admin check
   const ADMIN_EMAILS = ['vaishnav@cloutcareers.com', 'romanov360@gmail.com']
   const isAdmin = session?.user?.email && ADMIN_EMAILS.includes(session.user.email)
@@ -54,6 +60,50 @@ export default function AdminJobsPage() {
       console.error('Error fetching jobs:', error)
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchUsers = async () => {
+    try {
+      const response = await fetch('/api/admin/gauge-interest')
+      if (response.ok) {
+        const data = await response.json()
+        setUsers(data)
+      }
+    } catch (error) {
+      console.error('Error fetching users:', error)
+    }
+  }
+
+  const handleGaugeInterest = async () => {
+    if (!gaugeJob || !selectedUserId) return
+
+    setGauging(true)
+    setMessage(null)
+
+    try {
+      const response = await fetch('/api/admin/gauge-interest', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          jobId: gaugeJob.id,
+          candidateId: selectedUserId
+        })
+      })
+
+      const data = await response.json()
+
+      if (response.ok) {
+        setMessage({ type: 'success', text: 'Interest gauge sent successfully!' })
+        setGaugeJob(null)
+        setSelectedUserId('')
+      } else {
+        setMessage({ type: 'error', text: data.error || 'Failed to gauge interest' })
+      }
+    } catch (error) {
+      setMessage({ type: 'error', text: 'An error occurred while gauging interest' })
+    } finally {
+      setGauging(false)
     }
   }
 
@@ -189,12 +239,25 @@ export default function AdminJobsPage() {
                       {new Date(job.createdAt).toLocaleDateString()}
                     </td>
                     <td className="px-6 py-4 whitespace-nowrap text-sm">
-                      <button
-                        onClick={() => setSelectedJob(job)}
-                        className="text-indigo-600 hover:text-indigo-900 font-medium"
-                      >
-                        Assign
-                      </button>
+                      <div className="flex gap-3">
+                        <button
+                          onClick={() => setSelectedJob(job)}
+                          className="text-indigo-600 hover:text-indigo-900 font-medium"
+                        >
+                          Assign
+                        </button>
+                        {job.status === 'ACTIVE' && (
+                          <button
+                            onClick={() => {
+                              setGaugeJob(job)
+                              fetchUsers()
+                            }}
+                            className="text-green-600 hover:text-green-900 font-medium"
+                          >
+                            Gauge Interest
+                          </button>
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -244,6 +307,62 @@ export default function AdminJobsPage() {
                     className="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700 disabled:bg-gray-400"
                   >
                     {assigning ? 'Assigning...' : 'Assign Job'}
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Gauge Interest Modal */}
+          {gaugeJob && (
+            <div className="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center z-50">
+              <div className="bg-white rounded-lg p-6 w-full max-w-md">
+                <h3 className="text-lg font-bold text-gray-900 mb-4">
+                  Gauge Interest: {gaugeJob.title}
+                </h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Company: {gaugeJob.company.name}
+                </p>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Select Candidate
+                  </label>
+                  <select
+                    value={selectedUserId}
+                    onChange={(e) => setSelectedUserId(e.target.value)}
+                    className="w-full px-3 py-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-green-500"
+                  >
+                    <option value="">Choose a candidate...</option>
+                    {users.map((user) => (
+                      <option key={user.id} value={user.id}>
+                        {user.firstName && user.lastName
+                          ? `${user.firstName} ${user.lastName} (${user.email})`
+                          : user.email
+                        }
+                      </option>
+                    ))}
+                  </select>
+                  <p className="mt-2 text-xs text-gray-500">
+                    The selected candidate will receive an email asking about their interest in this position
+                  </p>
+                </div>
+                <div className="flex justify-end gap-3">
+                  <button
+                    onClick={() => {
+                      setGaugeJob(null)
+                      setSelectedUserId('')
+                    }}
+                    className="px-4 py-2 text-gray-700 bg-gray-200 rounded-md hover:bg-gray-300"
+                    disabled={gauging}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleGaugeInterest}
+                    disabled={!selectedUserId || gauging}
+                    className="px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 disabled:bg-gray-400"
+                  >
+                    {gauging ? 'Sending...' : 'Gauge Interest'}
                   </button>
                 </div>
               </div>

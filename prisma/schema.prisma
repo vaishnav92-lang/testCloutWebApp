@@ -81,6 +81,8 @@ model User {
   sessions                 Session[]
   trustAllocationsGiven    TrustAllocation[]     @relation("TrustGiver")
   trustAllocationsReceived TrustAllocation[]     @relation("TrustReceiver")
+  candidateInterestsAsCandidate CandidateInterest[] @relation("CandidateInterestCandidate")
+  candidateInterestsAsAdmin     CandidateInterest[] @relation("CandidateInterestAdmin")
   referredBy               User?                 @relation("UserReferrals", fields: [referredById], references: [id])
   referrals                User[]                @relation("UserReferrals")
 
@@ -214,6 +216,7 @@ model Job {
   endorsements            Endorsement[]
   applications            JobApplication[]
   jobForwards             JobForward[]
+  candidateInterests      CandidateInterest[]
   company                 Company               @relation(fields: [companyId], references: [id])
   owner                   User                  @relation(fields: [ownerId], references: [id])
   referrals               Referral[]
@@ -403,6 +406,22 @@ model JobForward {
 
   @@unique([jobId, fromNodeId, toNodeId])
   @@map("job_forwards")
+}
+
+model CandidateInterest {
+  id          String                 @id @default(cuid())
+  jobId       String
+  candidateId String
+  adminId     String
+  status      CandidateInterestStatus @default(PENDING)
+  createdAt   DateTime               @default(now())
+  respondedAt DateTime?
+  job         Job                    @relation(fields: [jobId], references: [id])
+  candidate   User                   @relation("CandidateInterestCandidate", fields: [candidateId], references: [id])
+  admin       User                   @relation("CandidateInterestAdmin", fields: [adminId], references: [id])
+
+  @@unique([jobId, candidateId])
+  @@map("candidate_interests")
 }
 
 model Referral {
@@ -615,4 +634,11 @@ enum RecommenderStatus {
   INVITED
   ACCEPTED
   DECLINED
+}
+
+enum CandidateInterestStatus {
+  PENDING
+  VERY_EXCITED
+  INTERESTED_TO_CHAT
+  NOT_INTERESTED
 }
