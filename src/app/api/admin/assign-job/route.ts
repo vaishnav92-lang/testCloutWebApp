@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import { sendEmail } from '@/lib/email'
+import { getResend } from '@/lib/resend'
 import { randomBytes } from 'crypto'
 
 const ADMIN_EMAILS = ['vaishnav@cloutcareers.com', 'romanov360@gmail.com']
@@ -121,7 +121,9 @@ export async function POST(req: NextRequest) {
 
     // Send email
     try {
-      await sendEmail({
+      const resend = getResend()
+      await resend.emails.send({
+        from: process.env.EMAIL_FROM || 'Clout Careers <noreply@cloutcareers.com>',
         to: email,
         subject,
         html: emailContent
