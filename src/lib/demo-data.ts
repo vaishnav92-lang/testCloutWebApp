@@ -73,6 +73,39 @@ export interface DemoReferral {
   createdAt: Date
 }
 
+export interface DemoGrantRecommender {
+  id: string
+  email: string
+  name: string
+  trustWeight: number
+}
+
+export interface DemoGrant {
+  id: string
+  title: string
+  description: string
+  amount: number
+  status: 'DRAFT' | 'ACTIVE' | 'CLOSED' | 'COMPLETED'
+  grantmakerUserId: string
+  grantmakerName: string
+  recommenders: DemoGrantRecommender[]
+  applications: DemoGrantApplication[]
+  createdAt: Date
+}
+
+export interface DemoGrantApplication {
+  id: string
+  grantId: string
+  applicantUserId: string
+  applicantName: string
+  applicantEmail: string
+  status: 'PENDING' | 'UNDER_REVIEW' | 'RECOMMENDED' | 'REJECTED' | 'FUNDED'
+  responses: Record<string, string>
+  recommendationCount: number
+  averageRecommendationScore: number
+  createdAt: Date
+}
+
 export interface DemoState {
   currentUser: DemoUser
   users: DemoUser[]
@@ -81,6 +114,8 @@ export interface DemoState {
   trustAllocations: DemoTrustAllocation[]
   relationships: DemoRelationship[]
   referrals: DemoReferral[]
+  grants: DemoGrant[]
+  grantApplications: DemoGrantApplication[]
   trustScores: Record<string, number>
 }
 
@@ -384,8 +419,85 @@ const createMockTrustScores = (): Record<string, number> => ({
   'user-5': 650,
 })
 
+// Mock grants
+const createMockGrants = (): DemoGrant[] => [
+  {
+    id: 'grant-1',
+    title: 'AI Research Initiative',
+    description: 'Supporting innovative AI research projects that advance the field of artificial intelligence',
+    amount: 500000,
+    status: 'ACTIVE',
+    grantmakerUserId: 'user-1',
+    grantmakerName: 'Demo User',
+    recommenders: [
+      {
+        id: 'rec-1',
+        email: 'alice@example.com',
+        name: 'Alice Johnson',
+        trustWeight: 40,
+      },
+      {
+        id: 'rec-2',
+        email: 'bob@example.com',
+        name: 'Bob Smith',
+        trustWeight: 35,
+      },
+      {
+        id: 'rec-3',
+        email: 'carol@example.com',
+        name: 'Carol Williams',
+        trustWeight: 25,
+      },
+    ],
+    applications: [],
+    createdAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000),
+  },
+]
+
+// Mock grant applications
+const createMockGrantApplications = (): DemoGrantApplication[] => [
+  {
+    id: 'app-1',
+    grantId: 'grant-1',
+    applicantUserId: 'user-3',
+    applicantName: 'Bob Smith',
+    applicantEmail: 'bob@example.com',
+    status: 'UNDER_REVIEW',
+    responses: {
+      'project-title': 'Deep Learning for Climate Prediction',
+      'project-description': 'Using neural networks to improve climate models',
+      'team-size': '5',
+    },
+    recommendationCount: 2,
+    averageRecommendationScore: 8.5,
+    createdAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000),
+  },
+  {
+    id: 'app-2',
+    grantId: 'grant-1',
+    applicantUserId: 'user-4',
+    applicantName: 'Carol Williams',
+    applicantEmail: 'carol@example.com',
+    status: 'PENDING',
+    responses: {
+      'project-title': 'Natural Language Understanding Breakthrough',
+      'project-description': 'Advancing NLU capabilities for multilingual systems',
+      'team-size': '8',
+    },
+    recommendationCount: 0,
+    averageRecommendationScore: 0,
+    createdAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000),
+  },
+]
+
 export const generateMockDemoState = (): DemoState => {
   const users = createMockUsers()
+  const grants = createMockGrants()
+  const applications = createMockGrantApplications()
+
+  // Associate applications with grants
+  grants[0].applications = applications.filter(app => app.grantId === 'grant-1')
+
   return {
     currentUser: users[0],
     users,
@@ -394,6 +506,8 @@ export const generateMockDemoState = (): DemoState => {
     trustAllocations: createMockTrustAllocations(),
     relationships: createMockRelationships(),
     referrals: createMockReferrals(),
+    grants,
+    grantApplications: applications,
     trustScores: createMockTrustScores(),
   }
 }
