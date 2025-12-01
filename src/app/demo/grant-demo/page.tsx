@@ -221,9 +221,14 @@ export default function GrantDemoPage() {
               </svg>
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Fair Grant Allocation with EigenTrust</h2>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-8">
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
               See how a grant admin creates an opportunity for AI safety research, applicants apply and rate each other with trust scores, and Modified EigenTrust computes fair allocations based on the community's collective judgment.
             </p>
+            <div className="mb-8">
+              <Link href="/trust-property-proof" className="text-indigo-600 hover:text-indigo-700 font-medium text-sm inline-block">
+                Learn more about Modified EigenTrust →
+              </Link>
+            </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
               <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
