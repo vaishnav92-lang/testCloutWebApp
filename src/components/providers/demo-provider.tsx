@@ -6,6 +6,8 @@ import {
   generateMockDemoState,
   DemoEndorsement,
   DemoTrustAllocation,
+  DemoGrant,
+  DemoGrantApplication,
 } from '@/lib/demo-data'
 import { computeDemoEigentrust, EigentrustResult } from '@/lib/demo-eigentrust'
 
@@ -16,6 +18,10 @@ interface DemoContextType {
   addEndorsement: (endorsement: Omit<DemoEndorsement, 'id' | 'createdAt'>) => void
   updateEndorsement: (id: string, updates: Partial<DemoEndorsement>) => void
   updateTrustAllocation: (id: string, allocation: number) => void
+  addGrant: (grant: Omit<DemoGrant, 'id' | 'createdAt' | 'applications'>) => void
+  updateGrant: (id: string, updates: Partial<DemoGrant>) => void
+  addGrantApplication: (application: Omit<DemoGrantApplication, 'id' | 'createdAt'>) => void
+  updateGrantApplication: (id: string, updates: Partial<DemoGrantApplication>) => void
   clearDemoData: () => void
 }
 
@@ -73,6 +79,60 @@ export function DemoProvider({ children }: { children: ReactNode }) {
     }))
   }
 
+  const addGrant = (grant: Omit<DemoGrant, 'id' | 'createdAt' | 'applications'>) => {
+    const newGrant: DemoGrant = {
+      ...grant,
+      id: `grant-${Date.now()}`,
+      createdAt: new Date(),
+      applications: [],
+    }
+    setState((prev) => ({
+      ...prev,
+      grants: [...prev.grants, newGrant],
+    }))
+  }
+
+  const updateGrant = (id: string, updates: Partial<DemoGrant>) => {
+    setState((prev) => ({
+      ...prev,
+      grants: prev.grants.map((g) =>
+        g.id === id ? { ...g, ...updates } : g
+      ),
+    }))
+  }
+
+  const addGrantApplication = (application: Omit<DemoGrantApplication, 'id' | 'createdAt'>) => {
+    const newApplication: DemoGrantApplication = {
+      ...application,
+      id: `app-${Date.now()}`,
+      createdAt: new Date(),
+    }
+    setState((prev) => ({
+      ...prev,
+      grantApplications: [...prev.grantApplications, newApplication],
+      grants: prev.grants.map((g) =>
+        g.id === application.grantId
+          ? { ...g, applications: [...g.applications, newApplication] }
+          : g
+      ),
+    }))
+  }
+
+  const updateGrantApplication = (id: string, updates: Partial<DemoGrantApplication>) => {
+    setState((prev) => ({
+      ...prev,
+      grantApplications: prev.grantApplications.map((a) =>
+        a.id === id ? { ...a, ...updates } : a
+      ),
+      grants: prev.grants.map((g) => ({
+        ...g,
+        applications: g.applications.map((a) =>
+          a.id === id ? { ...a, ...updates } : a
+        ),
+      })),
+    }))
+  }
+
   const clearDemoData = () => {
     setState(generateMockDemoState())
     setEigentrustScores(null)
@@ -87,6 +147,10 @@ export function DemoProvider({ children }: { children: ReactNode }) {
         addEndorsement,
         updateEndorsement,
         updateTrustAllocation,
+        addGrant,
+        updateGrant,
+        addGrantApplication,
+        updateGrantApplication,
         clearDemoData,
       }}
     >

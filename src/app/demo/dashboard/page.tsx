@@ -168,6 +168,27 @@ export default function DemoDashboardPage() {
               </div>
             </div>
 
+            {/* Grant Allocation Demo */}
+            <div className="bg-gradient-to-br from-green-50 to-emerald-50 rounded-lg shadow border border-green-200">
+              <div className="p-6 border-b border-green-200">
+                <h2 className="text-xl font-bold text-gray-900">Grant Allocation</h2>
+                <p className="text-sm text-gray-600 mt-1">
+                  Learn how to manage grants with trust-weighted recommendations
+                </p>
+              </div>
+              <div className="p-6">
+                <p className="text-sm text-gray-700 mb-4">
+                  Explore an interactive tutorial on creating grants, selecting recommenders, and managing applications based on trust allocations.
+                </p>
+                <Link
+                  href="/demo/grant-demo"
+                  className="inline-block px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+                >
+                  Explore Grant Demo →
+                </Link>
+              </div>
+            </div>
+
             {/* Referral Activity */}
             <div className="bg-white rounded-lg shadow">
               <div className="p-6 border-b border-gray-200">
