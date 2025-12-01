@@ -41,7 +41,7 @@ export default function GrantDemoPage() {
         </div>
 
         {/* Main Content Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mb-12">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
           {/* Tutorial Card */}
           <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow">
             <div className="h-48 bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center">
@@ -82,6 +82,53 @@ export default function GrantDemoPage() {
                 className="w-full px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
               >
                 Start Tutorial →
+              </button>
+            </div>
+          </div>
+
+          {/* Dual Journey Card */}
+          <div className="bg-white rounded-lg shadow-lg overflow-hidden hover:shadow-xl transition-shadow border-2 border-green-300">
+            <div className="h-48 bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 flex items-center justify-center">
+              <svg className="w-24 h-24 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={1.5}
+                  d="M12 4.354a4 4 0 110 5.292M15 19H9m6 0a9 9 0 11-18 0 9 9 0 0118 0z"
+                />
+              </svg>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center justify-between mb-2">
+                <h3 className="text-2xl font-bold text-gray-900">Dual-Role Journey</h3>
+                <span className="text-xs bg-green-100 text-green-800 px-2 py-1 rounded font-semibold">NEW</span>
+              </div>
+              <p className="text-gray-600 mb-4">
+                Experience both sides of grant allocation. See how admins configure grants while applicants independently submit and score projects. Then watch EigenTrust calculate the final allocations.
+              </p>
+              <ul className="space-y-2 mb-6 text-sm text-gray-600">
+                <li className="flex items-start">
+                  <span className="mr-2 text-green-600">✓</span>
+                  <span>Split-view admin & applicant roles</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2 text-green-600">✓</span>
+                  <span>See information separation</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2 text-green-600">✓</span>
+                  <span>Watch EigenTrust calculate</span>
+                </li>
+                <li className="flex items-start">
+                  <span className="mr-2 text-green-600">✓</span>
+                  <span>Review final allocations</span>
+                </li>
+              </ul>
+              <button
+                onClick={() => router.push('/demo/grant-demo/dual-journey')}
+                className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg font-medium transition-colors"
+              >
+                Start Dual Journey →
               </button>
             </div>
           </div>
