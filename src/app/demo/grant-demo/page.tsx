@@ -75,11 +75,11 @@ export default function GrantDemoPage() {
   })
 
   const [utilities, setUtilities] = useState<UtilityFunction>({
-    alice: { min: 14000, max: 60000 },      // High trust: higher minimum, generous max
-    bob: { min: 11000, max: 55000 },        // Highest trust: moderate minimum, high max
-    carol: { min: 8000, max: 26000 },       // Medium-low trust: higher minimum, modest max
-    david: { min: 12000, max: 40000 },      // Medium trust: higher minimum to compete
-    emma: { min: 2000, max: 18000 },        // Lowest trust: very modest demands
+    alice: { min: 28000, max: 55000 },      // High trust (0.25): can support high min
+    bob: { min: 15000, max: 60000 },        // Highest trust (0.35): medium min, generous max
+    carol: { min: 4000, max: 22000 },       // Medium trust (0.15): low min, modest max
+    david: { min: 18000, max: 45000 },      // Medium-high trust (0.20): medium-high min
+    emma: { min: 25000, max: 40000 },       // Low trust (0.05): high min → likely disqualified
   })
 
   const [computing, setComputing] = useState(false)
@@ -129,35 +129,109 @@ export default function GrantDemoPage() {
     }
   }, [computing, eigentrustScores, allocations])
 
-  // Greedy Merit-Based Allocation (proven best across scenarios)
-  // Algorithm: Sort by trust score descending, then fill each person from min to max in order
+  // Exact Utility-Maximizing Allocation via Subset Enumeration
+  // Algorithm (from Grok):
+  // 1. Enumerate all 2^n subsets S of applicants to potentially fund
+  // 2. For each subset S:
+  //    - Check if Σ(min_i for i in S) <= B (feasible)
+  //    - Allocate remaining budget greedily by marginal rate r_i = t_i/(max_i - min_i)
+  //    - Compute total utility: Σ t_i * u_i(x_i)
+  // 3. Select subset with maximum total utility
   // Properties:
-  // - Highest trust gets first pick of capital
-  // - Respects utility preferences (min/max bounds)
-  // - Simple and robust (no edge cases like negative allocations)
-  // - Directly ties allocation to merit
+  // - Optimal: maximizes Σ t_i * u_i(x_i) exactly
+  // - High min + low trust → excluded (doesn't maximize utility)
+  // - High min + high trust → included if utility gain justifies cost
+  // - Merit-driven: trust score directly affects priority and utility
   const allocateCapital = (trustScores: Record<string, number>, utils: UtilityFunction, totalCapital: number) => {
     const users = Object.keys(trustScores)
+    const n = users.length
 
-    // Sort by trust score descending (highest trust first)
-    const ranked = users.sort((a, b) => trustScores[b] - trustScores[a])
+    let bestUtility = 0
+    let bestAllocations: Record<string, number> = {}
 
-    const result: Record<string, number> = {}
-    let remainingCapital = totalCapital
-
-    for (const userId of ranked) {
-      const min = utils[userId].min
-      const max = utils[userId].max
-
-      // Give them between min and max based on what's available
-      const allocation = Math.min(max, Math.max(min, remainingCapital))
-      result[userId] = allocation
-      remainingCapital -= allocation
-
-      if (remainingCapital <= 0) break
+    // Initialize all allocations to 0
+    for (const userId of users) {
+      bestAllocations[userId] = 0
     }
 
-    return result
+    // Enumerate all 2^n subsets
+    for (let mask = 0; mask < (1 << n); mask++) {
+      const subset: string[] = []
+
+      // Build subset from bitmask
+      for (let i = 0; i < n; i++) {
+        if (mask & (1 << i)) {
+          subset.push(users[i])
+        }
+      }
+
+      // Check feasibility: sum of minimums must not exceed budget
+      let fixedCost = 0
+      for (const userId of subset) {
+        fixedCost += utils[userId].min
+      }
+
+      if (fixedCost > totalCapital) continue // Infeasible
+
+      // Allocate remaining budget optimally for this subset
+      const remainingBudget = totalCapital - fixedCost
+
+      // Compute marginal rates and sort by descending order
+      const marginalRates = subset.map(userId => ({
+        userId,
+        rate: trustScores[userId] / (utils[userId].max - utils[userId].min),
+      }))
+      marginalRates.sort((a, b) => b.rate - a.rate)
+
+      // Greedy allocation of remaining budget
+      const allocations: Record<string, number> = {}
+      for (const userId of users) {
+        allocations[userId] = 0
+      }
+
+      // Assign minimums
+      for (const userId of subset) {
+        allocations[userId] = utils[userId].min
+      }
+
+      // Distribute remaining budget to subset members by marginal rate
+      let remaining = remainingBudget
+      for (const { userId } of marginalRates) {
+        const range = utils[userId].max - utils[userId].min
+        const additional = Math.min(remaining, range)
+        allocations[userId] += additional
+        remaining -= additional
+
+        if (remaining <= 0) break
+      }
+
+      // Compute total utility for this allocation
+      let totalUtility = 0
+      for (const userId of users) {
+        const x_i = allocations[userId]
+        const min_i = utils[userId].min
+        const max_i = utils[userId].max
+        const t_i = trustScores[userId]
+
+        // Utility: 0 if below min, linear between min-max, 1 if above max
+        let u_i = 0
+        if (x_i >= min_i && x_i <= max_i) {
+          u_i = (x_i - min_i) / (max_i - min_i)
+        } else if (x_i > max_i) {
+          u_i = 1
+        }
+
+        totalUtility += t_i * u_i
+      }
+
+      // Update best if this subset is better
+      if (totalUtility > bestUtility) {
+        bestUtility = totalUtility
+        bestAllocations = allocations
+      }
+    }
+
+    return bestAllocations
   }
 
   const handleNext = () => {
@@ -765,11 +839,11 @@ export default function GrantDemoPage() {
                         emma: { alice: 0, bob: 60, carol: 25, david: 15 },
                       })
                       setUtilities({
-                        alice: { min: 14000, max: 60000 },
-                        bob: { min: 11000, max: 55000 },
-                        carol: { min: 8000, max: 26000 },
-                        david: { min: 12000, max: 40000 },
-                        emma: { min: 2000, max: 18000 },
+                        alice: { min: 28000, max: 55000 },
+                        bob: { min: 15000, max: 60000 },
+                        carol: { min: 4000, max: 22000 },
+                        david: { min: 18000, max: 45000 },
+                        emma: { min: 25000, max: 40000 },
                       })
                       setEigentrustScores(null)
                       setFinalAllocations(null)
