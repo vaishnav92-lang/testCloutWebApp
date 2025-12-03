@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { useDemoAuth } from '@/hooks/useDemo'
 
-type Phase = 'intro' | 'admin-creates' | 'applicants-apply' | 'applicants-trust' | 'results'
+type Phase = 'intro' | 'admin-creates' | 'applicants-apply' | 'applicants-trust' | 'utility-over-value' | 'results'
 
 interface Applicant {
   id: string
@@ -16,6 +16,13 @@ interface Applicant {
 interface AllApplicantsAllocations {
   [fromApplicantId: string]: {
     [toApplicantId: string]: number
+  }
+}
+
+interface UtilityFunction {
+  [applicantId: string]: {
+    min: number
+    max: number
   }
 }
 
@@ -38,6 +45,18 @@ const APPLICANTS: Applicant[] = [
     project: 'AI Governance & Policy',
     description: 'Developing frameworks for responsible AI governance and regulatory compliance',
   },
+  {
+    id: 'david',
+    name: 'David',
+    project: 'Interpretability Methods for LLMs',
+    description: 'Advancing our understanding of how large language models make decisions',
+  },
+  {
+    id: 'emma',
+    name: 'Emma',
+    project: 'Scalable AI Monitoring Systems',
+    description: 'Building infrastructure to monitor and audit AI systems at scale',
+  },
 ]
 
 export default function GrantDemoPage() {
@@ -46,16 +65,28 @@ export default function GrantDemoPage() {
   const [expandedApplicant, setExpandedApplicant] = useState<string | null>('alice')
 
   // Each applicant's trust allocations to others
+  // Varied network: some concentrated (100/0), some sparse (85/15), some 2-3 way splits
   const [allocations, setAllocations] = useState<AllApplicantsAllocations>({
-    alice: { bob: 45, carol: 30 },
-    bob: { alice: 55, carol: 45 },
-    carol: { alice: 40, bob: 60 },
+    alice: { bob: 100, carol: 0, david: 0, emma: 0 },        // Fully concentrated on Bob
+    bob: { alice: 85, carol: 15, david: 0, emma: 0 },        // Very sparse: Alice/Carol split
+    carol: { alice: 0, bob: 30, david: 70, emma: 0 },        // Focused on David and Bob
+    david: { alice: 50, bob: 0, carol: 40, emma: 10 },       // Concentrated on Alice/Carol with small Emma
+    emma: { alice: 0, bob: 60, carol: 25, david: 15 },       // Concentrated on Bob, some Carol/David
+  })
+
+  const [utilities, setUtilities] = useState<UtilityFunction>({
+    alice: { min: 28000, max: 55000 },      // High trust (0.25): can support high min
+    bob: { min: 15000, max: 60000 },        // Highest trust (0.35): medium min, generous max
+    carol: { min: 4000, max: 22000 },       // Medium trust (0.15): low min, modest max
+    david: { min: 18000, max: 45000 },      // Medium-high trust (0.20): medium-high min
+    emma: { min: 25000, max: 40000 },       // Low trust (0.05): high min → likely disqualified
   })
 
   const [computing, setComputing] = useState(false)
   const [eigentrustScores, setEigentrustScores] = useState<Record<string, number> | null>(null)
+  const [finalAllocations, setFinalAllocations] = useState<Record<string, number> | null>(null)
 
-  const phases: Phase[] = ['intro', 'admin-creates', 'applicants-apply', 'applicants-trust', 'results']
+  const phases: Phase[] = ['intro', 'admin-creates', 'applicants-apply', 'applicants-trust', 'utility-over-value', 'results']
   const currentIndex = phases.indexOf(currentPhase)
 
   // Convert allocations to graph format and call API immediately when computing
@@ -86,6 +117,9 @@ export default function GrantDemoPage() {
         .then(res => res.json())
         .then(data => {
           setEigentrustScores(data.modified)
+          // Compute final allocations
+          const allocResult = allocateCapital(data.modified, utilities, 100000)
+          setFinalAllocations(allocResult)
           setComputing(false)
         })
         .catch(error => {
@@ -94,6 +128,111 @@ export default function GrantDemoPage() {
         })
     }
   }, [computing, eigentrustScores, allocations])
+
+  // Exact Utility-Maximizing Allocation via Subset Enumeration
+  // Algorithm (from Grok):
+  // 1. Enumerate all 2^n subsets S of applicants to potentially fund
+  // 2. For each subset S:
+  //    - Check if Σ(min_i for i in S) <= B (feasible)
+  //    - Allocate remaining budget greedily by marginal rate r_i = t_i/(max_i - min_i)
+  //    - Compute total utility: Σ t_i * u_i(x_i)
+  // 3. Select subset with maximum total utility
+  // Properties:
+  // - Optimal: maximizes Σ t_i * u_i(x_i) exactly
+  // - High min + low trust → excluded (doesn't maximize utility)
+  // - High min + high trust → included if utility gain justifies cost
+  // - Merit-driven: trust score directly affects priority and utility
+  const allocateCapital = (trustScores: Record<string, number>, utils: UtilityFunction, totalCapital: number) => {
+    const users = Object.keys(trustScores)
+    const n = users.length
+
+    let bestUtility = 0
+    let bestAllocations: Record<string, number> = {}
+
+    // Initialize all allocations to 0
+    for (const userId of users) {
+      bestAllocations[userId] = 0
+    }
+
+    // Enumerate all 2^n subsets
+    for (let mask = 0; mask < (1 << n); mask++) {
+      const subset: string[] = []
+
+      // Build subset from bitmask
+      for (let i = 0; i < n; i++) {
+        if (mask & (1 << i)) {
+          subset.push(users[i])
+        }
+      }
+
+      // Check feasibility: sum of minimums must not exceed budget
+      let fixedCost = 0
+      for (const userId of subset) {
+        fixedCost += utils[userId].min
+      }
+
+      if (fixedCost > totalCapital) continue // Infeasible
+
+      // Allocate remaining budget optimally for this subset
+      const remainingBudget = totalCapital - fixedCost
+
+      // Compute marginal rates and sort by descending order
+      const marginalRates = subset.map(userId => ({
+        userId,
+        rate: trustScores[userId] / (utils[userId].max - utils[userId].min),
+      }))
+      marginalRates.sort((a, b) => b.rate - a.rate)
+
+      // Greedy allocation of remaining budget
+      const allocations: Record<string, number> = {}
+      for (const userId of users) {
+        allocations[userId] = 0
+      }
+
+      // Assign minimums
+      for (const userId of subset) {
+        allocations[userId] = utils[userId].min
+      }
+
+      // Distribute remaining budget to subset members by marginal rate
+      let remaining = remainingBudget
+      for (const { userId } of marginalRates) {
+        const range = utils[userId].max - utils[userId].min
+        const additional = Math.min(remaining, range)
+        allocations[userId] += additional
+        remaining -= additional
+
+        if (remaining <= 0) break
+      }
+
+      // Compute total utility for this allocation
+      let totalUtility = 0
+      for (const userId of users) {
+        const x_i = allocations[userId]
+        const min_i = utils[userId].min
+        const max_i = utils[userId].max
+        const t_i = trustScores[userId]
+
+        // Utility: 0 if below min, linear between min-max, 1 if above max
+        let u_i = 0
+        if (x_i >= min_i && x_i <= max_i) {
+          u_i = (x_i - min_i) / (max_i - min_i)
+        } else if (x_i > max_i) {
+          u_i = 1
+        }
+
+        totalUtility += t_i * u_i
+      }
+
+      // Update best if this subset is better
+      if (totalUtility > bestUtility) {
+        bestUtility = totalUtility
+        bestAllocations = allocations
+      }
+    }
+
+    return bestAllocations
+  }
 
   const handleNext = () => {
     if (currentIndex < phases.length - 1) {
@@ -179,7 +318,7 @@ export default function GrantDemoPage() {
   }
 
   // Calculate funding allocations
-  const fundingTotal = 500000
+  const fundingTotal = 100000
   let fundingAllocations: Record<string, number> = {}
   if (eigentrustScores) {
     const totalScore = Object.values(eigentrustScores).reduce((a, b) => a + b, 0)
@@ -200,10 +339,10 @@ export default function GrantDemoPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">
-              Grant Allocation: The Three Phases
+              Grant Allocation: The Complete Journey
               <span className="text-sm bg-blue-100 text-blue-800 px-2 py-1 rounded ml-2">Demo</span>
             </h1>
-            <p className="text-sm text-gray-500">Admin creates grant • Applicants apply & allocate trust • EigenTrust computes allocations</p>
+            <p className="text-sm text-gray-500">Admin creates $100K grant • Applicants apply, allocate trust & define utility • EigenTrust computes fair allocations</p>
           </div>
           <Link href="/demo/dashboard" className="text-sm text-gray-600 hover:text-gray-900 font-medium">
             ← Back
@@ -222,7 +361,7 @@ export default function GrantDemoPage() {
             </div>
             <h2 className="text-3xl font-bold text-gray-900 mb-4">Fair Grant Allocation with EigenTrust</h2>
             <p className="text-lg text-gray-600 max-w-2xl mx-auto mb-6">
-              See how a grant admin creates an opportunity for AI safety research, applicants apply and rate each other with trust scores, and Modified EigenTrust computes fair allocations based on the community's collective judgment.
+              See how five AI safety researchers compete for $100K in funding. Each applicant rates the others with trust scores, specifies their funding needs, and a fair allocation algorithm combines both to compute the outcome.
             </p>
             <div className="mb-8">
               <Link href="/trust-property-proof" className="text-indigo-600 hover:text-indigo-700 font-medium text-sm inline-block">
@@ -230,23 +369,25 @@ export default function GrantDemoPage() {
               </Link>
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8 max-w-4xl mx-auto">
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8 max-w-5xl mx-auto">
               <div className="bg-blue-50 rounded-lg p-6 border-2 border-blue-200">
-                <div className="text-2xl mb-2">🏛</div>
-                <h3 className="font-bold text-blue-900 mb-2">Phase 1: Admin Creates</h3>
-                <p className="text-sm text-blue-800">Sets up a $500K grant round for AI safety research</p>
+                <h3 className="font-bold text-blue-900 mb-2">Admin Creates</h3>
+                <p className="text-sm text-blue-800">Sets up a $100K grant round</p>
               </div>
 
               <div className="bg-purple-50 rounded-lg p-6 border-2 border-purple-200">
-                <div className="text-2xl mb-2">👥</div>
-                <h3 className="font-bold text-purple-900 mb-2">Phase 2: Apply & Trust</h3>
-                <p className="text-sm text-purple-800">Submit proposals and allocate trust to other applicants</p>
+                <h3 className="font-bold text-purple-900 mb-2">Apply & Rate</h3>
+                <p className="text-sm text-purple-800">Submit proposals and rate peers</p>
+              </div>
+
+              <div className="bg-yellow-50 rounded-lg p-6 border-2 border-yellow-200">
+                <h3 className="font-bold text-yellow-900 mb-2">Define Utility</h3>
+                <p className="text-sm text-yellow-800">Specify min/max funding needs</p>
               </div>
 
               <div className="bg-green-50 rounded-lg p-6 border-2 border-green-200">
-                <div className="text-2xl mb-2">⚙️</div>
-                <h3 className="font-bold text-green-900 mb-2">Phase 3: EigenTrust</h3>
-                <p className="text-sm text-green-800">Algorithm computes fair allocations from trust network</p>
+                <h3 className="font-bold text-green-900 mb-2">Results</h3>
+                <p className="text-sm text-green-800">Fair allocations computed</p>
               </div>
             </div>
 
@@ -254,7 +395,7 @@ export default function GrantDemoPage() {
               onClick={handleNext}
               className="px-8 py-3 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-semibold transition-colors"
             >
-              Start the Journey →
+              Start the Journey
             </button>
           </div>
         )}
@@ -271,6 +412,7 @@ export default function GrantDemoPage() {
                     'admin-creates': 'Admin Creates',
                     'applicants-apply': 'Applicants Apply',
                     'applicants-trust': 'Allocate Trust',
+                    'utility-over-value': 'Utility Function',
                     'results': 'Results',
                   }
                   return (
@@ -351,29 +493,48 @@ export default function GrantDemoPage() {
                     </div>
                   )}
 
+                  {currentPhase === 'utility-over-value' && (
+                    <div className="space-y-4 text-center text-gray-600">
+                      <p>Applicants are defining their utility functions...</p>
+                      <div className="animate-pulse">
+                        <div className="inline-block">
+                          <svg className="w-8 h-8 text-indigo-600 animate-spin" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+                          </svg>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
                   {currentPhase === 'results' && (
                     <div className="space-y-4">
-                      <h3 className="font-bold text-gray-900 text-lg">Final Allocations</h3>
+                      <h3 className="font-bold text-gray-900 text-lg">Summary & Analysis</h3>
                       <div className="space-y-3">
-                        {APPLICANTS.map(app => (
-                          <div key={app.id} className="bg-white rounded p-3 border-l-4 border-indigo-500">
-                            <p className="font-semibold text-gray-900">{app.name}'s Project</p>
-                            <p className="text-xs text-gray-600 mt-1">{app.project}</p>
-                            {eigentrustScores && (
-                              <>
-                                <p className="text-xs text-gray-600 mt-1">
-                                  EigenTrust Score: <span className="font-semibold">{eigentrustScores[app.id].toFixed(4)}</span>
-                                </p>
-                                <p className="text-lg font-bold text-indigo-600 mt-2">
-                                  ${(fundingAllocations[app.id] || 0).toLocaleString('en-US', { maximumFractionDigits: 0 })}
-                                </p>
-                              </>
-                            )}
-                            {computing && (
-                              <p className="text-xs text-gray-500 mt-2">Computing...</p>
-                            )}
-                          </div>
-                        ))}
+                        {APPLICANTS.map(app => {
+                          const amount = finalAllocations?.[app.id] || 0
+                          const trust = eigentrustScores?.[app.id] || 0
+                          const util = utilities[app.id]
+                          return (
+                            <div key={app.id} className="bg-white rounded p-3 border-l-4 border-indigo-500">
+                              <p className="font-semibold text-gray-900">{app.name}</p>
+                              <p className="text-xs text-gray-600 mt-1">{app.project}</p>
+                              <div className="mt-2 pt-2 border-t border-gray-200 space-y-1 text-xs">
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Trust Score:</span>
+                                  <span className="font-semibold">{trust.toFixed(4)}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Utility Range:</span>
+                                  <span className="font-semibold">${util?.min?.toLocaleString()} - ${util?.max?.toLocaleString()}</span>
+                                </div>
+                                <div className="flex justify-between">
+                                  <span className="text-gray-600">Allocation:</span>
+                                  <span className="font-bold text-indigo-600">${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )
+                        })}
                       </div>
                     </div>
                   )}
@@ -520,6 +681,70 @@ export default function GrantDemoPage() {
                     </div>
                   )}
 
+                  {currentPhase === 'utility-over-value' && (
+                    <div className="space-y-4">
+                      <h3 className="font-bold text-gray-900 text-lg">Define Your Utility Function</h3>
+                      <p className="text-sm text-gray-600 mb-4">Specify the minimum and maximum amounts you'd find useful. Users get full utility at max and zero below min. Utility is linear between the min and max.</p>
+
+                      <div className="space-y-4 max-h-96 overflow-y-auto">
+                        {APPLICANTS.map(applicant => (
+                          <div key={applicant.id} className="bg-white rounded border border-gray-200 p-4">
+                            <h4 className="font-semibold text-gray-900 mb-3">{applicant.name}</h4>
+                            <div className="grid grid-cols-2 gap-4">
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Minimum Amount ($)
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={utilities[applicant.id]?.min || 0}
+                                  onChange={e => {
+                                    const newMin = Math.max(0, parseInt(e.target.value) || 0)
+                                    const currentMax = utilities[applicant.id]?.max || newMin
+                                    setUtilities(prev => ({
+                                      ...prev,
+                                      [applicant.id]: {
+                                        min: Math.min(newMin, currentMax),
+                                        max: currentMax,
+                                      },
+                                    }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                />
+                              </div>
+                              <div>
+                                <label className="block text-sm font-medium text-gray-700 mb-2">
+                                  Maximum Amount ($)
+                                </label>
+                                <input
+                                  type="number"
+                                  min="0"
+                                  value={utilities[applicant.id]?.max || 0}
+                                  onChange={e => {
+                                    const newMax = Math.max(0, parseInt(e.target.value) || 0)
+                                    const currentMin = utilities[applicant.id]?.min || 0
+                                    setUtilities(prev => ({
+                                      ...prev,
+                                      [applicant.id]: {
+                                        min: currentMin,
+                                        max: Math.max(newMax, currentMin),
+                                      },
+                                    }))
+                                  }}
+                                  className="w-full px-3 py-2 border border-gray-300 rounded text-sm"
+                                />
+                              </div>
+                            </div>
+                            <div className="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                              Range: ${utilities[applicant.id]?.min?.toLocaleString() || 0} - ${utilities[applicant.id]?.max?.toLocaleString() || 0}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
                   {currentPhase === 'results' && (
                     <div className="space-y-4">
                       {computing ? (
@@ -536,22 +761,46 @@ export default function GrantDemoPage() {
                         </div>
                       ) : (
                         <>
-                          <h3 className="font-bold text-gray-900 text-lg">Results - Who Got Funded?</h3>
-                          <p className="text-sm text-gray-600">All applicants can see the allocations. The process was fair and transparent.</p>
+                          <h3 className="font-bold text-gray-900 text-lg">Final Allocations</h3>
+                          <p className="text-sm text-gray-600 mb-4">Computed from EigenTrust scores and your utility preferences.</p>
                           <div className="space-y-3">
-                            {APPLICANTS.map(app => (
-                              <div key={app.id} className="bg-white rounded p-3 border-l-4 border-green-500">
-                                <p className="font-semibold text-gray-900">{app.name} ✓ Funded</p>
-                                <p className="text-xs text-gray-600 mt-1">{app.project}</p>
-                                {eigentrustScores && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    ${(fundingAllocations[app.id] || 0).toLocaleString('en-US', {
-                                      maximumFractionDigits: 0,
-                                    })}
-                                  </p>
-                                )}
-                              </div>
-                            ))}
+                            {APPLICANTS.map(app => {
+                              const amount = finalAllocations?.[app.id] || 0
+                              const util = utilities[app.id]
+                              const utilValue = util ? (amount < util.min ? 0 : amount > util.max ? 1 : (amount - util.min) / (util.max - util.min)) : 0
+                              const trust = eigentrustScores?.[app.id] || 0
+                              return (
+                                <div key={app.id} className="bg-white rounded p-4 border-l-4 border-green-500">
+                                  <div className="flex justify-between items-start">
+                                    <div>
+                                      <p className="font-semibold text-gray-900">{app.name}</p>
+                                      <p className="text-xs text-gray-600 mt-1">{app.project}</p>
+                                    </div>
+                                    <div className="text-right">
+                                      <p className="text-2xl font-bold text-green-600">
+                                        ${amount.toLocaleString('en-US', { maximumFractionDigits: 0 })}
+                                      </p>
+                                    </div>
+                                  </div>
+                                  <div className="mt-3 pt-3 border-t border-gray-200 grid grid-cols-3 gap-3 text-xs">
+                                    <div>
+                                      <p className="text-gray-600">Trust Score</p>
+                                      <p className="font-semibold text-gray-900">{trust.toFixed(4)}</p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-600">Utility Range</p>
+                                      <p className="font-semibold text-gray-900">
+                                        ${util?.min?.toLocaleString() || 0} - ${util?.max?.toLocaleString() || 0}
+                                      </p>
+                                    </div>
+                                    <div>
+                                      <p className="text-gray-600">Utility Value</p>
+                                      <p className="font-semibold text-gray-900">{utilValue.toFixed(3)}</p>
+                                    </div>
+                                  </div>
+                                </div>
+                              )
+                            })}
                           </div>
                         </>
                       )}
@@ -583,17 +832,27 @@ export default function GrantDemoPage() {
                     onClick={() => {
                       setCurrentPhase('intro')
                       setAllocations({
-                        alice: { bob: 45, carol: 30 },
-                        bob: { alice: 55, carol: 45 },
-                        carol: { alice: 40, bob: 60 },
+                        alice: { bob: 100, carol: 0, david: 0, emma: 0 },
+                        bob: { alice: 85, carol: 15, david: 0, emma: 0 },
+                        carol: { alice: 0, bob: 30, david: 70, emma: 0 },
+                        david: { alice: 50, bob: 0, carol: 40, emma: 10 },
+                        emma: { alice: 0, bob: 60, carol: 25, david: 15 },
+                      })
+                      setUtilities({
+                        alice: { min: 28000, max: 55000 },
+                        bob: { min: 15000, max: 60000 },
+                        carol: { min: 4000, max: 22000 },
+                        david: { min: 18000, max: 45000 },
+                        emma: { min: 25000, max: 40000 },
                       })
                       setEigentrustScores(null)
+                      setFinalAllocations(null)
                       setComputing(false)
                       setExpandedApplicant('alice')
                     }}
                     className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 text-white rounded-lg font-medium transition-colors"
                   >
-                    Try Different Allocations →
+                    Try Different Allocations
                   </button>
                 </div>
               ) : (
@@ -602,7 +861,7 @@ export default function GrantDemoPage() {
                   disabled={currentIndex === phases.length - 1}
                   className="px-6 py-2 bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 text-white rounded-lg font-medium transition-colors"
                 >
-                  Next →
+                  Next
                 </button>
               )}
             </div>
