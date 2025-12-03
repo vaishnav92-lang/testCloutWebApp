@@ -75,11 +75,11 @@ export default function GrantDemoPage() {
   })
 
   const [utilities, setUtilities] = useState<UtilityFunction>({
-    alice: { min: 5000, max: 25000 },
-    bob: { min: 8000, max: 30000 },
-    carol: { min: 10000, max: 20000 },
-    david: { min: 3000, max: 35000 },
-    emma: { min: 12000, max: 28000 },
+    alice: { min: 14000, max: 60000 },      // High trust: higher minimum, generous max
+    bob: { min: 11000, max: 55000 },        // Highest trust: moderate minimum, high max
+    carol: { min: 8000, max: 26000 },       // Medium-low trust: higher minimum, modest max
+    david: { min: 12000, max: 40000 },      // Medium trust: higher minimum to compete
+    emma: { min: 2000, max: 18000 },        // Lowest trust: very modest demands
   })
 
   const [computing, setComputing] = useState(false)
@@ -760,16 +760,16 @@ export default function GrantDemoPage() {
                       setAllocations({
                         alice: { bob: 100, carol: 0, david: 0, emma: 0 },
                         bob: { alice: 85, carol: 15, david: 0, emma: 0 },
-                        carol: { alice: 20, bob: 30, david: 35, emma: 15 },
+                        carol: { alice: 0, bob: 30, david: 70, emma: 0 },
                         david: { alice: 50, bob: 0, carol: 40, emma: 10 },
                         emma: { alice: 0, bob: 60, carol: 25, david: 15 },
                       })
                       setUtilities({
-                        alice: { min: 5000, max: 25000 },
-                        bob: { min: 8000, max: 30000 },
-                        carol: { min: 10000, max: 20000 },
-                        david: { min: 3000, max: 35000 },
-                        emma: { min: 12000, max: 28000 },
+                        alice: { min: 14000, max: 60000 },
+                        bob: { min: 11000, max: 55000 },
+                        carol: { min: 8000, max: 26000 },
+                        david: { min: 12000, max: 40000 },
+                        emma: { min: 2000, max: 18000 },
                       })
                       setEigentrustScores(null)
                       setFinalAllocations(null)
