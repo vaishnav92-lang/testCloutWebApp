@@ -455,7 +455,7 @@ export default function GrantDemoPage() {
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-700">Total Funding Available</label>
-                          <p className="text-gray-900 font-semibold text-lg mt-1">$500,000</p>
+                          <p className="text-gray-900 font-semibold text-lg mt-1">$100,000</p>
                         </div>
                         <div>
                           <label className="text-sm font-medium text-gray-700">Status</label>
